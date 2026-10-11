@@ -310,11 +310,13 @@ UI._drawShopOverlay = function() {
   const rebuild = !!shopIcons && this._shopDirty;
   if (rebuild) {
     shopIcons.innerHTML = '';
-    // 对齐 canvas：叠层原点 = canvas 左上角（canvas 前面有 HUD bar，不能从容器原点算）
-    const rect = this.canvas.getBoundingClientRect();
-    const containerRect = this.canvas.parentElement.getBoundingClientRect();
-    shopIcons.style.top = (rect.top - containerRect.top) + 'px';
-    shopIcons.style.left = (rect.left - containerRect.left) + 'px';
+    // 0.8.5：强制横屏（#game-container 竖屏 rotate(90deg)）下，
+    // getBoundingClientRect 返回的是旋转后轴对齐包围盒，其差值=屏幕空间偏移，
+    // 直接设给位于旋转容器内、坐标系未旋转的 #shop-icons 会错位。
+    // 改用 transform 无关的 offsetTop/offsetLeft（相对 #game-area 的布局坐标），
+    // 与 canvas 同处旋转局部坐标系、叠加 1:1，旋转后图标仍对齐格心；常态等价。
+    shopIcons.style.top = this.canvas.offsetTop + 'px';
+    shopIcons.style.left = this.canvas.offsetLeft + 'px';
   }
 
   // 用 DOM 渲染物品图标 + 数量角标——跟工具栏同一套浏览器原生缩放管线，清晰度一致

@@ -141,6 +141,19 @@ Object.assign(UI, {
     const rect = this.canvas.getBoundingClientRect();
     const clientX = e.clientX !== undefined ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
     const clientY = e.clientY !== undefined ? e.clientY : (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+    // 0.8.5：竖屏强制横屏（#game-container rotate(90deg)）下，画布被旋转，
+    // getBoundingClientRect 返回的是旋转后轴对齐包围盒，直接减 left/top 会命中错格。
+    // 逆旋转还原：以画布屏幕中心为原点，把触点屏幕偏移做 90° 逆时针还原到缓冲坐标。
+    const isPortrait = window.matchMedia && window.matchMedia('(orientation: portrait)').matches;
+    if (isPortrait) {
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dx = clientX - cx;
+      const dy = clientY - cy;
+      const W = this.canvas.width, H = this.canvas.height;
+      // 顺时针 90° 把缓冲(lx,ly)→屏幕(dx,dy) 的映射为 dx=H/2-ly, dy=lx-W/2，逆之得：
+      return { x: W / 2 + dy, y: H / 2 - dx };
+    }
     return { x: clientX - rect.left, y: clientY - rect.top };
   },
 

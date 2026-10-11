@@ -111,6 +111,13 @@
     window.addEventListener('pagehide', _saveOnHide);
     window.addEventListener('beforeunload', _saveOnHide);
 
+    // 0.8.4：移动端（微信/webview）关页时 pagehide/beforeunload 常被跳过、静默存不触发，
+    // 改用 visibilitychange（切走/关页 document.hidden 先触发、比 pagehide 可靠）兜底存盘。
+    // 复用 _saveOnHide（已含标题页拦截+存盘+关闭标记），纯新增、不动既有逻辑。
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) _saveOnHide();
+    });
+
     // 0.6.3：关页弹原生「要离开」确认框。注册在 _saveOnHide 之后 → 先静默存档（幂等写同槽）再弹框：
     // 点「留在页面上」→ 回游戏、存档已写入零影响；点「离开」→ 正常关闭。标题界面不弹（判据与 _saveOnHide 同款），
     // 避免开页直接关也骚扰。已知局限：原生框文案浏览器写死、无「存/不存」语义；iOS 无框但静默存档照走（pagehide 未动）。

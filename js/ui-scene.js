@@ -42,6 +42,14 @@
  *
  */
 
+// 空耕地角标轮转种子（与播种图标映射 ui-events.js L602 同源）；emoji 兜底键取各作物原兜底
+const _SEED_BADGE_CYCLE = [
+  ['wheat_seeds', '🌾'],
+  ['potato', '🥔'],
+  ['mc_sweet_berries', '🍓'],
+];
+const _SEED_BADGE_PERIOD = 2000;   // 每颗种子播 2 秒，整轮 6 秒
+
 const _sceneMethods = {
   _renderSceneToCanvas(scene) {
 
@@ -255,6 +263,10 @@ const _sceneMethods = {
 
     const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 320);
 
+    // 角标随时间轮转播放全部现有种子：全局时间驱动（performance.now() 已在方法内取 pulse 使用，同源）
+    const idx = Math.floor(performance.now() / _SEED_BADGE_PERIOD) % _SEED_BADGE_CYCLE.length;
+    const [badgeKey, badgeEmoji] = _SEED_BADGE_CYCLE[idx];
+
     this._forEachFarmCell(cs, (r, c, x, y) => {
 
       const cell = Farm.grid[r][c];
@@ -271,7 +283,7 @@ const _sceneMethods = {
 
         : `rgba(125,190,135,${0.30 + 0.35 * pulse})`; // 干土：柔草绿（半透明质感，降饱和不刺眼）
 
-      this._drawBreathingBorder(ctx, x, y, cs, strokeRGB, cs * 0.34, pulse, 'wheat_seeds', '🌾');
+      this._drawBreathingBorder(ctx, x, y, cs, strokeRGB, cs * 0.34, pulse, badgeKey, badgeEmoji);
 
     });
 
@@ -744,8 +756,6 @@ const _sceneMethods = {
       ctx.globalAlpha = a;
       const s = shakeMap ? shakeMap.get(r + ',' + c) : null;
       if (s) {
-        // 颤格：与草身同枢轴（格底中心+v.ox/oy）同角度旋转裁片（T(pivot)·R(θ)·T(-pivot)），
-        // ring 裁片由 A 段烘焙而来（已烘 variation、颤角=0），草身实时变换=同枢轴多一个 rotate(θ)，逐像素对齐。
         const v = this._grassVariation(r, c);
         const px = c * cs + cs / 2 + v.ox;
         const py = r * cs + cs + v.oy;
@@ -756,48 +766,8 @@ const _sceneMethods = {
         ctx.drawImage(ring, (c - 1) * cs - px, (r - 1) * cs - py);
         ctx.restore();
       } else {
-        // 非颤格：画回裁剪原点，与 B 逐像素对齐（零漂移）
         ctx.drawImage(ring, (c - 1) * cs, (r - 1) * cs);
       }
-    }
-    ctx.restore();
-  },
-
-  /** B · 邻近提亮层（A 路线，每帧）：只遍历「有元素格」（farm 场景的花、treeFarm 场景的树苗/树冠），
-   *  对每格按鼠标到格心距离用 _proxBoost 算 alpha，叠一层白色 overlay 提亮（鼠标近→亮，远→淡出）。
-   *  与草描边逐格追光共用 _proxBoost，视觉一致；每帧只过几十个有元素格，零缓存、零行为风险。
-   *  画在 vegCache 之上、夜色蒙层之下：白天清晰提亮，夜晚被夜色自然吸收成柔和微光。 */
-  _drawProxHighlight(ctx, cs) {
-    if (this._mouseX === undefined || this._mouseX === -1e4) return;   // 鼠标离场 → 无提亮
-    const mx = this._mouseX, my = this._mouseY;
-    const cells = [];
-    if (this.scene === 'treeFarm') {
-      if (TreeFarm.trees) {
-        for (let r = 0; r < DATA.FARM.ROWS; r++)
-          for (let c = 0; c < DATA.FARM.COLS; c++) {
-            const t = TreeFarm.trees[r] && TreeFarm.trees[r][c];
-            if (t && (t.stage === 'sapling' || t.stage === 'grown')) cells.push({ x: c * cs, y: r * cs });
-          }
-      }
-    } else {
-      if (Farm.flowers) {
-        for (let r = 0; r < DATA.FARM.ROWS; r++)
-          for (let c = 0; c < DATA.FARM.COLS; c++) {
-            if ((Farm.flowers[r] || [])[c]) cells.push({ x: c * cs, y: r * cs });
-          }
-      }
-    }
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
-    for (let i = 0; i < cells.length; i++) {
-      const cell = cells[i];
-      const cx = cell.x + cs / 2, cy = cell.y + cs / 2;
-      const d = Math.sqrt((mx - cx) * (mx - cx) + (my - cy) * (my - cy));
-      const a = this._proxBoost(d, cs);
-      if (a <= 0.205) continue;   // 远离鼠标：淡出截止（不常驻洗白）
-      ctx.globalAlpha = a * 0.45;   // 上限半透明，避免全白吃掉像素细节
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(cell.x, cell.y, cs, cs);
     }
     ctx.restore();
   },
@@ -880,8 +850,8 @@ const _sceneMethods = {
       }
       if (!anyFlower && !anyCanopy && !anySapling && !anyCrop) {
         this._grassOutlineKey = key;
-        this._grassRingCropCache = {};
         this._grassOutline = { canvas: A, centroids: [] };   // 贴图未加载 → 空轮廓
+        this._grassRingCropCache = {};
         return this._grassOutline;
       }
       // 有花或树冠无草：草层为 null，下面 A 烘焙循环里草格因 layer null 跳过，花/树冠正常烘焙
@@ -1114,8 +1084,8 @@ const _sceneMethods = {
     o.globalCompositeOperation = 'source-over';
 
     this._grassOutlineKey = key;
-    this._grassRingCropCache = {};   // B 已重建：逐格裁剪子图全部失效
     this._grassOutline = { canvas: B, centroids };
+    this._grassRingCropCache = {};   // B 已重建：逐格裁剪子图全部失效
     return this._grassOutline;
   },
 

@@ -210,7 +210,7 @@ Object.assign(UI, {
 
       Player.selectTool(`seed-${seedId}`);
 
-      this.showStatus(`选择种子：${DATA.CROPS[seedId].name}`, 1000);
+      this.showStatus(`种子：${DATA.CROPS[seedId].name}`, 1000);
 
     } else {
 

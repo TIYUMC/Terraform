@@ -36,6 +36,8 @@ UI.openShop = function() {
   // 标记需要重建，确保G块和快捷栏首次渲染
   this._shopDirty = true;
   this._markShopDirty();
+  const _cs = document.getElementById('close-shop');
+  if (_cs) _cs.style.display = 'block';   // 开店显示关闭叉叉
 };
 
 
@@ -61,6 +63,8 @@ UI.closeShop = function() {
   if (si) si.innerHTML = '';
   Engine.resume();
   this.render();
+  const _cs2 = document.getElementById('close-shop');
+  if (_cs2) _cs2.style.display = 'none';   // 关店隐藏关闭叉叉
 };
 
 /** 成交后重建交易列表并刷新 UI（_executeTrade 三分支末尾共用，逐字同形）。 */

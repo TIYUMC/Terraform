@@ -333,21 +333,39 @@ body {
 }
 
 /* ===== 状态消息 ===== */
+/* ===== 状态消息（三档 3× 整图直贴，不裁不 9-slice 不拉伸） ===== */
 #status-message {
   position: fixed;
   top: 52px; left: 50%;
   transform: translateX(-50%);
-  padding: 12px 24px;
-  background: rgba(0,0,0,0.82);
+  width: 96px; height: 96px;       /* 短档 32×3 */
+  line-height: 96px;
+  padding: 0;
+  white-space: nowrap;
+  box-sizing: border-box;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 96px 96px;
+  image-rendering: pixelated;
   color: var(--text);
   font-size: 13px;
   font-family: 'Silkscreen', sans-serif;
-  border-radius: 10px;
   pointer-events: none;
-  transform: translateX(-50%) translateY(0);
-  transition: opacity .3s cubic-bezier(0.16,1,0.3,1), transform .3s cubic-bezier(0.16,1,0.3,1);
   z-index: 50;
   text-align: center;
+  transition: opacity .3s cubic-bezier(0.16,1,0.3,1), transform .3s cubic-bezier(0.16,1,0.3,1), filter .5s linear;
+}
+/* 中档：64 图 3× = 192×96 */
+#status-message.status-mid {
+  width: 192px; height: 96px;
+  line-height: 96px;
+  background-size: 192px 96px;
+}
+/* 长档：128 图 3× = 384×96 */
+#status-message.status-xl {
+  width: 384px; height: 96px;
+  line-height: 96px;
+  background-size: 384px 96px;
 }
 .status-hidden { opacity: 0; transform: translateX(-50%) translateY(-10px); }
 .status-visible { opacity: 1; transform: translateX(-50%) translateY(0); animation: statusPop 0.35s cubic-bezier(0.34,1.56,0.64,1); }
@@ -402,6 +420,34 @@ body {
 /* ===== 弹窗 ===== */
 .overlay-hidden { display: none; }
 .overlay-visible { display: flex; }
+
+/* 面板关闭叉叉（贴 cancel 贴图，不用 emoji/CSS 自画）：背包/任务书 absolute 相对各自 overlay，商店 fixed 盖 canvas */
+.panel-close-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  background-image: var(--cancel-frame);
+  background-size: cover;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  border: none;
+  cursor: pointer;
+  z-index: 100;
+  opacity: 0.85;
+  transition: opacity 0.15s;
+}
+.panel-close-btn:hover { opacity: 1; }
+
+/* 商店叉叉 fixed 盖住 canvas 上的商店（商店非 DOM 弹窗，不在某容器内） */
+#close-shop {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 500;
+}
 
 #inventory-overlay {
   position: fixed;
@@ -518,6 +564,7 @@ body {
 }
 .inv-slot .inv-count {
   position: absolute;
+  z-index: 6;
   right: 3px; bottom: 1px;
   font-size: clamp(10px, 1.4vw, 14px);
   font-weight: bold;
@@ -558,6 +605,20 @@ body {
   pointer-events: none;
   z-index: 5;
 }
+/* 背包面板内快捷栏行「未选中+有物品」框（补 4 态最后一态）：--slot-frame=框_未选中有物品，inset 沿用 -15% */
+.inv-slot.ff-slot-frame::before {
+  content: "";
+  position: absolute;
+  inset: -15%;
+  background-image: var(--slot-frame);
+  background-size: cover;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  background-repeat: no-repeat;
+  background-position: center;
+  pointer-events: none;
+  z-index: 5;
+}
 /* 底部常驻快捷栏同款（0.5.27） */
 #bottom-hotbar .hotbar-cell.ff-sel { z-index: 20; }
 #bottom-hotbar .hotbar-cell.ff-sel::before {
@@ -567,6 +628,50 @@ body {
   background-image: var(--focus-frame);
   background-size: cover;
   image-rendering: pixelated;
+  background-repeat: no-repeat;
+  background-position: center;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* 未选中格框（框_1）走伪元素外扩到 62px，比选中格 .ff-sel（72px）小一档 */
+#bottom-hotbar .hotbar-cell.ff-slot-frame::before {
+  content: "";
+  position: absolute;
+  inset: -15%;
+  background-image: var(--slot-frame);
+  background-size: cover;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  background-repeat: no-repeat;
+  background-position: center;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* 无物品空格框（4 态 4 框的另一半）：选中档走 框_选中且无物品、未选中档走 框_未选中且无物品。
+   通用类（不绑父选择器），主页 #bottom-hotbar .hotbar-cell 与 背包 .inv-slot 共用；inset 沿用选中 -25% / 未选中 -15% */
+.ff-focus-empty::before {
+  content: "";
+  position: absolute;
+  inset: -25%;
+  background-image: var(--hotbar-cell-focus-empty);
+  background-size: cover;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  background-repeat: no-repeat;
+  background-position: center;
+  pointer-events: none;
+  z-index: 5;
+}
+.ff-idle-empty::before {
+  content: "";
+  position: absolute;
+  inset: -15%;
+  background-image: var(--hotbar-cell-idle-empty);
+  background-size: cover;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
   background-repeat: no-repeat;
   background-position: center;
   pointer-events: none;
@@ -824,6 +929,8 @@ body {
   #quest-overlay, #quest-frame-wrap { transition: opacity .01ms !important; }
   #quest-frame-wrap { transform: none !important; }
   .qenter, .q-link { animation: none !important; }
+  #save-slot-panel.slot-panel-anim, #save-slot-panel.slot-panel-anim .save-slot-opt { animation: none !important; }
+  .mc-btn.btn-in, .mc-select.btn-in { animation: none !important; }
   .quest-frame { transition: none !important; }
   .quest-frame:hover { transform: none !important; filter: none !important; }
   .quest-frame.locked { filter: brightness(.55) saturate(.45) !important; }
@@ -1109,6 +1216,9 @@ body {
   margin-top: 4px;
   font-family: 'Silkscreen', sans-serif;
 }
+/* 存档面板入场：与背包/任务书同套观感（淡入+轻微上移缩放，像素风无 glow/边框） */
+#save-slot-panel.slot-panel-anim { animation: panelIn .42s cubic-bezier(0.16,1,0.3,1) both; }
+#save-slot-panel.slot-panel-anim .save-slot-opt { animation: slotIn .42s cubic-bezier(0.16,1,0.3,1) both; animation-delay: calc(var(--i,0) * 26ms); }
 .save-slot-opt { padding: 8px 10px; color: #fff; font-size: 14px; cursor: pointer; }
 .save-slot-opt:hover { background: rgba(255,255,255,0.15); }
 .save-slot-opt.selected { background: rgba(120,80,200,0.35); }
@@ -1243,6 +1353,7 @@ body {
   100% { opacity: 1; transform: scale(1) translateY(0); }
 }
 .mc-btn.btn-in { animation: btnBounceIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.mc-select.btn-in { animation: btnBounceIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 
 /* 提示文字闪烁（MC 风格 splash） */
 @keyframes splashFlash {
@@ -1378,9 +1489,10 @@ body {
   height: 48px;
   cursor: pointer;
   transition: transform 0.1s;
-  background-size: cover;
   background-repeat: no-repeat;
   background-position: center;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
   border-radius: 4px;
 }
 #bottom-hotbar .hotbar-cell:hover {
@@ -1399,6 +1511,7 @@ body {
 }
 #bottom-hotbar .item-count {
   position: absolute;
+  z-index: 6;
   bottom: 1px;
   right: 2px;
   font-size: 9px;
@@ -1484,7 +1597,7 @@ body {
   }
 
   /* ── 状态提示 / Toast ── */
-  #status-message { font-size: 13px; padding: 4px 12px; }
+  #status-message { font-size: 13px; padding: 0 16px; }
 }
 
 /* 竖屏旋转提示已按用户要求移除。
@@ -1518,6 +1631,10 @@ body {
   /* 导航箭头按钮缩小（0.5.11） */
   #nav-scene-btn { width: 44px; height: 44px; }
 
+  /* 面板关闭叉叉移动端缩为 24×24、内缩定位 */
+  .panel-close-btn { width: 24px; height: 24px; top: 4px; right: 4px; }
+  #close-shop { top: 8px; right: 8px; }
+
   /* 手机端：竖排两行（快捷栏第一行、按钮第二行），各自横排可滑动 */
   #toolbar {
     flex-direction: column;
@@ -1547,7 +1664,7 @@ body {
   #bottom-hotbar .item-count { font-size: 8px; }
 
   /* 状态提示与 Toast */
-  #status-message { font-size: 13px; padding: 5px 12px; }
+  #status-message { font-size: 13px; padding: 0 16px; }
 
   /* 刘海屏安全区 */
   #game-container {

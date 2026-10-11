@@ -43,6 +43,8 @@ UI.openInventory = function() {
   // 动画播完移除类，之后任何重渲染（拿起/放下/滚轮）都不再重放
   setTimeout(() => { mainG.classList.remove('inv-grid-anim'); hotG.classList.remove('inv-grid-anim'); }, 1200);
   document.getElementById('inventory-overlay').className = 'overlay-visible';
+  const _ci = document.getElementById('close-inventory');
+  if (_ci) _ci.style.display = 'block';   // 开背包显示关闭叉叉
 };
 
 
@@ -55,6 +57,8 @@ UI.closeInventory = function() {
   Engine.resume();
   this.render();
   this._renderBottomHotbar();   // 关背包回主界面即时刷新常驻底部快捷栏 DOM
+  const _ci2 = document.getElementById('close-inventory');
+  if (_ci2) _ci2.style.display = 'none';   // 关背包隐藏关闭叉叉
 };
 
 
@@ -102,19 +106,26 @@ UI._makeSlot = function(slot, index, isHotbar, isSelected) {
   el.className = 'inv-slot';
   el.dataset.index = index;
 
-  // 快捷栏选中格：改用伪元素承载（.ff-sel::before，inset:-15% 外扩 30% 且零裁切），
-  // CSS 变量 --focus-frame 由 _ensureFocusFrame 懒注入（取不到图就不加类，宁缺毋滥）
-  if (isHotbar && isSelected) {
-    if (this._ensureFocusFrame()) { el.classList.add('ff-sel'); el.style.zIndex = 20; }
+  // 新框（ff-focus-empty/ff-idle-empty）=背包内快捷栏行 + 主页底部（isHotbar）；背包主栏 27 格空槽走旧框
+  // 无物品判定=空槽 或 工具(橡子)/种子/资源数量 0（MC 风格：没货就空着）
+  const _slotEmpty =
+    !slot ||
+    (slot.kind === 'tool' && slot.toolId === 'acorn' && !(slot.count > 0)) ||
+    (slot.kind === 'seed' && !(slot.count > 0)) ||
+    (slot.kind === 'resource' && !(slot.count > 0));
+  if (isSelected) {
+    if (_slotEmpty) {
+      if (isHotbar) { if (this._ensureFocusEmptyFrame()) { el.classList.add('ff-focus-empty'); el.style.zIndex = 20; } }
+      else { if (this._ensureFocusFrame()) { el.classList.add('ff-sel'); el.style.zIndex = 20; } }   // 主栏空+选中→旧框
+    } else { if (this._ensureFocusFrame()) { el.classList.add('ff-sel'); el.style.zIndex = 20; } }
+  } else if (_slotEmpty) {
+    if (isHotbar) { if (this._ensureIdleEmptyFrame()) el.classList.add('ff-idle-empty'); }   // 快捷栏行 空+未选→idle空框
+  } else {
+    if (isHotbar) { if (this._ensureSlotFrame()) el.classList.add('ff-slot-frame'); }        // 快捷栏行 有物品+未选→slot框（补漏）
   }
-  // 主背包选中格：inv-sel 保留 inset 黄内描边；外大框走 ff-sel 伪元素（口径，
-  // 「外大框压内细框」双层叠层；zIndex=20 防溢出被 z=calc(10-idx) 的邻居盖边）
-  if (!isHotbar && isSelected) {
-    el.classList.add('inv-sel');
-    if (this._ensureFocusFrame()) { el.classList.add('ff-sel'); el.style.zIndex = 20; }
-  }
+  if (!isHotbar && isSelected) el.classList.add('inv-sel');   // 主背包选中格保留黄内描边
 
-  if (!slot) return el;                      // 空槽
+  if (!slot) return el;                      // 空槽（无物品空格已按 4 态加好框）
   const cls = slot.kind === 'seed' ? 'seed' : (slot.kind === 'tool' ? 'tool' : (slot.kind === 'resource' ? 'resource' : 'crop'));
   el.classList.add(cls);
 
@@ -147,6 +158,45 @@ UI._ensureFocusFrame = function() {
   const u = this._assetURL('focus_frame');
   if (!u) return false;
   document.documentElement.style.setProperty('--focus-frame', 'url("' + u + '")');
+  return true;
+};
+
+/**
+ * 懒注入 --slot-frame CSS 变量（伪元素承载未选中快捷栏格框，外扩 72px 跟选中格齐平）
+ * 照 _ensureFocusFrame：取到 gamemode_switcher_slot(框_1) data URL 才注入并返回 true；取不到返回 false（调用方据此不加 .ff-slot-frame，宁缺毋滥）。
+ * 幂等：已注入过直接返回 true。
+ */
+UI._ensureSlotFrame = function() {
+  if (document.documentElement.style.getPropertyValue('--slot-frame')) return true;
+  const u = this._assetURL('gamemode_switcher_slot');
+  if (!u) return false;
+  document.documentElement.style.setProperty('--slot-frame', 'url("' + u + '")');
+  return true;
+};
+
+/**
+ * 懒注入 --hotbar-cell-focus-empty CSS 变量（4 态 4 框：选中档「无物品」框 = 框_选中且无物品）
+ * 照 _ensureFocusFrame 惯例：取到 hotbar_cell_focus_empty data URL 才注入并返回 true；取不到返回 false（不加 .ff-focus-empty，宁缺毋滥）。
+ * 幂等：已注入过直接返回 true。
+ */
+UI._ensureFocusEmptyFrame = function() {
+  if (document.documentElement.style.getPropertyValue('--hotbar-cell-focus-empty')) return true;
+  const u = this._assetURL('hotbar_cell_focus_empty');
+  if (!u) return false;
+  document.documentElement.style.setProperty('--hotbar-cell-focus-empty', 'url("' + u + '")');
+  return true;
+};
+
+/**
+ * 懒注入 --hotbar-cell-idle-empty CSS 变量（4 态 4 框：未选中档「无物品」框 = 框_未选中且无物品）
+ * 照 _ensureSlotFrame 惯例：取到 hotbar_cell_idle_empty data URL 才注入并返回 true；取不到返回 false（不加 .ff-idle-empty，宁缺毋滥）。
+ * 幂等：已注入过直接返回 true。
+ */
+UI._ensureIdleEmptyFrame = function() {
+  if (document.documentElement.style.getPropertyValue('--hotbar-cell-idle-empty')) return true;
+  const u = this._assetURL('hotbar_cell_idle_empty');
+  if (!u) return false;
+  document.documentElement.style.setProperty('--hotbar-cell-idle-empty', 'url("' + u + '")');
   return true;
 };
 
@@ -830,11 +880,18 @@ UI._renderBottomHotbar = function() {
         UI._dragCount = 0;
       });
     }
-    const bgKey = (i === Player._hotbarSel) ? 'focus_frame' : 'gamemode_switcher_slot';
-    const bgSrc = this._assetURL(bgKey);
-    // 选中格框只走 ff-sel 伪元素一条通道；未选中格保留 gamemode_switcher_slot 底纹
-    if (bgKey !== 'focus_frame' && bgSrc) cell.style.backgroundImage = 'url("' + bgSrc + '")';
-    if (bgKey === 'focus_frame' && this._ensureFocusFrame()) cell.classList.add('ff-sel');
+    // 主页底部 4 态 4 框：有物品旧框（选中 .ff-sel focus_frame / 未选中 .ff-slot-frame 框_1），无物品新框（选中 .ff-focus-empty / 未选中 .ff-idle-empty）
+    const _hbEmpty = !slot ||
+      (slot.kind === 'tool' && slot.toolId === 'acorn' && !(slot.count > 0)) ||
+      (slot.kind === 'seed' && !(slot.count > 0)) ||
+      (slot.kind === 'resource' && !(slot.count > 0));
+    if (i === Player._hotbarSel) {
+      if (_hbEmpty) { if (this._ensureFocusEmptyFrame()) cell.classList.add('ff-focus-empty'); }
+      else { if (this._ensureFocusFrame()) cell.classList.add('ff-sel'); }
+    } else {
+      if (_hbEmpty) { if (this._ensureIdleEmptyFrame()) cell.classList.add('ff-idle-empty'); }
+      else { if (this._ensureSlotFrame()) cell.classList.add('ff-slot-frame'); }
+    }
     if (slot) {
       const icon = document.createElement('img');
       icon.className = 'item-icon';

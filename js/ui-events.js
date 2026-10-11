@@ -280,7 +280,7 @@ Object.assign(UI, {
 
   _plantDone(res, seedName) {
 
-    if (res === 'no_seed') { this.showStatus(`❌ 种子包里没有 ${seedName} 种子, 去商店买吧 (B)`, 1500); return; }
+    if (res === 'no_seed') { this.showStatus(`❌ 没 ${seedName} 种, 去商店 (B)`, 1500); return; }
 
     if (res !== 'ok') {
 
@@ -603,7 +603,7 @@ Object.assign(UI, {
 
           // 点击即判定：干不了直接提示、不进进度条
 
-          if (!Player.hasSeed(seedId)) { this.showStatus(`❌ 种子包里没有 ${seedName} 种子, 去商店买吧 (B)`, 1500); return; }
+          if (!Player.hasSeed(seedId)) { this.showStatus(`❌ 没 ${seedName} 种, 去商店 (B)`, 1500); return; }
 
           const cell0 = (Farm.grid[row] && Farm.grid[row][col]) || null;
 

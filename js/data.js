@@ -195,9 +195,9 @@ const DATA = {
     { id:'to2',  parent:'to1',     x:1420, y:500, icon:'command_block', title:'建筑委托', desc:'承接镇上建筑委托，交付 32 块木板换取 100 金锭', cat:'tools', manual:true, track:{k:'submit', item:'planks', n:32}, reward:{ money:100 } },
 
     // —— 解锁链（独立一行，在所有主线下方）——
-    { id:'g_farm',   parent:'tut_wood', x:100,  y:700, icon:'wheat_seeds', title:'▶ 播种耕作', desc:'完成本节点解锁「耕作」支线任务页', cat:'core', track:{k:'plant', n:1}, manual:true },
-    { id:'g_tools',  parent:'g_farm',   x:250,  y:700, icon:'chest', title:'▶ 置办农具', desc:'完成本节点解锁「工匠」支线任务页', cat:'core', track:{k:'ownTool', tool:'axe'}, manual:true },
-    { id:'g_forage', parent:'g_tools',  x:400,  y:700, icon:'oak_log', title:'▶ 林间初探', desc:'完成本节点解锁「采集」支线任务页', cat:'core', track:{k:'chop', n:1}, manual:true },
+    { id:'g_farm',   parent:'tut_wood', x:100,  y:700, icon:'wheat_seeds', title:'▶ 播种耕作', desc:'种植 1 株作物。完成后解锁「耕作」任务页', cat:'core', track:{k:'plant', n:1}, manual:true },
+    { id:'g_tools',  parent:'g_farm',   x:250,  y:700, icon:'chest', title:'▶ 置办农具', desc:'拥有 1 把斧头（商店购买）。完成后解锁「工匠」任务页', cat:'core', track:{k:'ownTool', tool:'axe'}, manual:true },
+    { id:'g_forage', parent:'g_tools',  x:400,  y:700, icon:'oak_log', title:'▶ 林间初探', desc:'砍伐 1 棵树木。完成后解锁「采集」任务页', cat:'core', track:{k:'chop', n:1}, manual:true },
   ],
   // 选项卡（分类页签）。id 与 QUESTS[].cat 对应；
   // tab/selected 为选项卡底图贴图 key；icon 为该分类在选项卡上的代表物贴图 key。

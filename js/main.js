@@ -237,6 +237,22 @@
     const confirmCard = document.getElementById('confirm-card');
     if (confirmCard && typeof ASSETS !== 'undefined' && ASSETS.registry['enchantment'])
       confirmCard.style.backgroundImage = `url(${ASSETS.registry['enchantment']})`;
+    // 提示条木框三档切换（≤4→32 / 5~10→64 / >10→128，全部 3× 放大 1:1 直贴）
+    const statusMsg = document.getElementById('status-message');
+    const _b32 = (typeof ASSETS !== 'undefined' && ASSETS.registry['wood_banner']) || '';
+    const _b64 = (typeof ASSETS !== 'undefined' && ASSETS.registry['wood_banner_mid']) || _b32;
+    const _b128 = (typeof ASSETS !== 'undefined' && ASSETS.registry['wood_banner_long']) || _b64;
+    statusMsg._applyBanner = function (html) {
+      const text = (html || '').replace(/<[^>]*>/g, '');
+      const n = text.length;
+      this.classList.remove('status-mid', 'status-xl');
+      let url;
+      if (n > 10) { url = 'url(' + _b128 + ')'; this.classList.add('status-xl'); }
+      else if (n > 4) { url = 'url(' + _b64 + ')'; this.classList.add('status-mid'); }
+      else { url = 'url(' + _b32 + ')'; }
+      this.style.backgroundImage = url;
+    };
+    if (statusMsg && _b32) statusMsg._applyBanner('');
     // 0.6.5：是/否按钮绑定（静态 DOM 在 index.html，挂一次无累积泄漏）
     const confirmYes = document.getElementById('confirm-yes');
     const confirmNo = document.getElementById('confirm-no');
@@ -253,13 +269,30 @@
     const _hideCredits = function () { if (creditsOverlay) creditsOverlay.classList.remove('show'); };
     if (creditsBtn) creditsBtn.addEventListener('click', function () { _showCredits(); });   // 闭包不传参（0.6.1 裸绑定教训）
     if (creditsClose) creditsClose.addEventListener('click', function () { _hideCredits(); });
+    // 面板关闭叉叉：初始化 --cancel-frame CSS 变量（贴 cancel 贴图，JS 喂，同 _ensureFocusFrame 惯例）
+    if (typeof ASSETS !== 'undefined' && ASSETS.registry['cancel'])
+      document.documentElement.style.setProperty('--cancel-frame', 'url("' + ASSETS.registry['cancel'] + '")');
+    const closeInventory = document.getElementById('close-inventory');
+    const closeShop = document.getElementById('close-shop');
+    const closeQuest = document.getElementById('close-quest');
+    if (closeInventory) closeInventory.addEventListener('click', () => UI.closeInventory());
+    if (closeShop) closeShop.addEventListener('click', () => UI.closeShop());
+    if (closeQuest) closeQuest.addEventListener('click', () => UI.closeQuest());
     document.addEventListener('keydown', function (e) {
       if (creditsOverlay && e.key === 'Escape' && creditsOverlay.classList.contains('show')) _hideCredits();
     });
     if (slotBtn && slotPanel && selSaveSlot) {
       // 按钮 click → toggle 浮层（none/block）
       slotBtn.addEventListener('click', function () {
-        slotPanel.style.display = slotPanel.style.display === 'none' ? 'block' : 'none';
+        var open = slotPanel.style.display === 'none';
+        slotPanel.style.display = open ? 'block' : 'none';
+        if (open) {
+          slotPanel.classList.remove('slot-panel-anim');
+          void slotPanel.offsetWidth; // 强制重排，确保动画每次重放
+          slotPanel.classList.add('slot-panel-anim');
+        } else {
+          slotPanel.classList.remove('slot-panel-anim');
+        }
       });
       // 面板项 click（事件委托，只监听 panel 一次）→ 写回隐藏 select value + 选中高亮 + 按钮文案同步 + 关浮层 + 选中即进
       slotPanel.addEventListener('click', function (e) {
@@ -270,6 +303,7 @@
         for (let i = 0; i < items.length; i++) items[i].classList.toggle('selected', items[i] === opt);
         slotBtn.textContent = opt.textContent;
         slotPanel.style.display = 'none';
+        slotPanel.classList.remove('slot-panel-anim');
         if (opt.dataset.value === '') return;   // 占位项「选择存档…」不进游戏（与原生默认项一致）
         const N = parseInt(opt.dataset.value, 10);
         if (isNaN(N) || !SaveGame.hasSave(N)) {
@@ -283,6 +317,7 @@
       document.addEventListener('click', function (e) {
         if (slotWrap && slotWrap.contains(e.target)) return;   // 内部点击（按钮/面板项）由各自监听处理
         slotPanel.style.display = 'none';
+        slotPanel.classList.remove('slot-panel-anim');
       });
     }
     // 添加切换动画
@@ -393,12 +428,14 @@
     placeholder.className = 'save-slot-opt';
     placeholder.dataset.value = '';
     placeholder.textContent = '选择存档…';
+    placeholder.style.setProperty('--i', '0');
     panel.appendChild(placeholder);
     if (typeof SaveGame === 'undefined' || !SaveGame.listSlots) return;
     SaveGame.listSlots().forEach(function (r) {
       var o = document.createElement('div');
       o.className = 'save-slot-opt';
       o.dataset.value = String(r.slot);
+      o.style.setProperty('--i', String(r.slot));
       o.textContent = r.has
         ? ('存档 ' + r.slot + ' · ' + (r.summary || '未知'))
         : ('存档 ' + r.slot + ' · 空');
@@ -423,7 +460,7 @@
 
   /** 按钮弹性入场（错开延迟） */
   function _animateButtonsIn() {
-    var btns = document.querySelectorAll('.mc-btn');
+    var btns = document.querySelectorAll('.mc-btn, #save-slot-btn');
     btns.forEach(function(btn, i) {
       btn.classList.remove('btn-in');
       void btn.offsetWidth; // 触发重排

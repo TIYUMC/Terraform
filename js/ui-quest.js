@@ -43,6 +43,9 @@ const _questMethods = {
 
     this._renderQuest();
 
+    const _cq = document.getElementById('close-quest');
+    if (_cq) _cq.style.display = 'block';   // 开任务书显示关闭叉叉
+
   },
 
 
@@ -67,6 +70,9 @@ const _questMethods = {
     this._questOpen = false;
 
     this._questTipNode = null;    // 关闭提示节点状态
+
+    const _cq2 = document.getElementById('close-quest');
+    if (_cq2) _cq2.style.display = 'none';   // 关任务书隐藏关闭叉叉
 
     // 背包仍开着，不关（关闭任务书即回到背包）
 

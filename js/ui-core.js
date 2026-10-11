@@ -531,6 +531,7 @@ const UI = {
 
     // 性能缓存：避免每帧重复计算
     this._nightAlphaCache = null;     // 夜间蒙层强度缓存（游戏时间变化时才重算）
+    this._lastStatusDim = null;       // 状态提示条夜色压暗缓存（值没变不写 DOM）
     this._lastNightHour = -1;         // 上次计算的小时（用于缓存失效检测）
     this._lastMinute = -1;            // 上次计算的分钟
 
@@ -684,9 +685,6 @@ const UI = {
 
 
 
-    // 邻近提亮层（B · A 路线）：只遍历有元素格，按鼠标距离叠白色提亮，与草描边同源 _proxBoost
-    this._drawProxHighlight(ctx, cs);
-
     // 草丛颤动：在静态层之上、雨蒙层/选中框/雨丝之下绘制，
 
     // 这样重画的草继承雨天的朦胧感，且不会盖住选中框（图层顺序修正）。
@@ -784,6 +782,7 @@ const UI = {
     // 昼夜蒙层：整幅画面最顶层（含雨/雪），使夜晚明显区别于白天
 
     this._drawNightOverlay(ctx);
+    this._applyStatusNightDim();
 
     // 草白描边实时层：整片合并外轮廓（无相邻双白线交叉），alpha 随鼠标到最近草质心距离 10%→100% 渐变（草身不变）。
     // 画在夜间蒙层之上：黑夜时白描边不再被夜色压暗，轮廓清晰（用户反馈「夜晚太暗」）。
@@ -1055,6 +1054,20 @@ const UI = {
 
 
 
+  /**
+   * 状态提示条夜色压暗：整条 filter brightness 跟 nightAlpha（框+文字一起变暗=跟场景协调）。
+   * 白天 a=0 不压；满夜 a=0.6 → brightness(0.55)；缓存防每帧抖。
+   */
+  _applyStatusNightDim() {
+    const el = document.getElementById('status-message');
+    if (!el) return;
+    const a = this._nightAlpha();
+    if (this._lastStatusDim === a) return;
+    this._lastStatusDim = a;
+    el.style.filter = a > 0 ? `brightness(${(1 - a * 0.75).toFixed(3)})` : 'none';
+  },
+
+
   /** 更新 HUD（仅在值变化时写 DOM，避免每帧 getElementById + 布局重绘——HUD 仅随游戏事件变化） */
 
   showStatus(msg, duration = 1500) {
@@ -1118,6 +1131,8 @@ const UI = {
     const el = document.getElementById('status-message');
 
     el.innerHTML = msg;
+
+    if (el._applyBanner) el._applyBanner(msg);
 
     // 重播弹跳动画
 

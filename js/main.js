@@ -207,7 +207,7 @@
         if (typeof UI._tickSnow === 'function') UI._tickSnow();
         if (typeof UI._updateHUD === 'function') UI._updateHUD();
       }
-      const names = { 6: '早上（6:00）', 12: '中午（12:00）', 18: '傍晚（18:00）', 21: '晚上（21:00）' };
+      const names = { 6: '6:00', 12: '12:00', 18: '18:00', 21: '21:00' };
       if (typeof UI !== 'undefined' && UI.showStatus) UI.showStatus('时间：' + names[v], 1000);
     });
     // 任务书入口：底部工具栏紫色书按钮（商店右边），点开/关任务书

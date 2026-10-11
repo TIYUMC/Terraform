@@ -1381,6 +1381,28 @@ body {
 }
 .status-visible { animation: statusPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
 
+/* 快捷栏切选弹跳（K 动效）：仅 transform，120ms，无布局抖动 */
+@keyframes hbSelPop {
+  from { transform: scale(1.08); }
+  to   { transform: scale(1); }
+}
+.hb-just-sel {
+  animation: hbSelPop 120ms ease;
+  z-index: 21;
+}
+
+/* hover 缩放改作用内层 ::before 与 .item-icon，命中区仍是 48px 原格，杜绝边缘死循环 */
+#bottom-hotbar .hotbar-cell.ff-sel::before,
+#bottom-hotbar .hotbar-cell.ff-slot-frame::before,
+#bottom-hotbar .hotbar-cell.ff-focus-empty::before,
+#bottom-hotbar .hotbar-cell.ff-idle-empty::before {
+  transition: transform 0.1s;
+}
+#bottom-hotbar .hotbar-cell:hover::before {
+  transform: scale(1.08);
+  transform-origin: center;
+}
+
 /* 结算面板从底部弹性滑入 */
 @keyframes summarySlideUp {
   0%   { opacity: 0; transform: translateY(80px) scale(0.9); }
@@ -1495,9 +1517,6 @@ body {
   image-rendering: -moz-crisp-edges;
   border-radius: 4px;
 }
-#bottom-hotbar .hotbar-cell:hover {
-  transform: scale(1.08);
-}
 #bottom-hotbar .item-icon {
   position: absolute;
   top: 50%;
@@ -1508,6 +1527,10 @@ body {
   image-rendering: pixelated;
   image-rendering: -moz-crisp-edges;
   pointer-events: none;
+  transition: transform 0.1s;
+}
+#bottom-hotbar .hotbar-cell:hover .item-icon {
+  transform: translate(-50%, -50%) scale(1.08);
 }
 #bottom-hotbar .item-count {
   position: absolute;

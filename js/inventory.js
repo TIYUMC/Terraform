@@ -86,12 +86,14 @@ UI.renderInventory = function() {
   const hotbar = document.getElementById('inv-grid-hotbar');
   if (hotbar) {
     hotbar.innerHTML = '';
+    const _invPrevSel = (this._hbInvPrevSel != null) ? this._hbInvPrevSel : Player._hotbarSel;
     for (let i = 0; i < 9; i++) {
       const idx = 27 + i;
-      const s = this._makeSlot(Player.invSlots[idx], idx, true, i === Player._hotbarSel);
+      const s = this._makeSlot(Player.invSlots[idx], idx, true, i === Player._hotbarSel, i !== _invPrevSel);
       s.style.setProperty('--i', i);
       hotbar.appendChild(s);
     }
+    this._hbInvPrevSel = Player._hotbarSel;   // 记录本次选中，供下次切选判定弹跳（K 动效）
   }
 
   // 合成格：每次渲染背包同步刷新
@@ -101,7 +103,7 @@ UI.renderInventory = function() {
 
 
 /** 构造一个物品格子 DOM（仅展示；交互全部走网格事件委托，不在格子上绑 click） */
-UI._makeSlot = function(slot, index, isHotbar, isSelected) {
+UI._makeSlot = function(slot, index, isHotbar, isSelected, justSwitched) {
   const el = document.createElement('div');
   el.className = 'inv-slot';
   el.dataset.index = index;
@@ -124,6 +126,7 @@ UI._makeSlot = function(slot, index, isHotbar, isSelected) {
     if (isHotbar) { if (this._ensureSlotFrame()) el.classList.add('ff-slot-frame'); }        // 快捷栏行 有物品+未选→slot框（补漏）
   }
   if (!isHotbar && isSelected) el.classList.add('inv-sel');   // 主背包选中格保留黄内描边
+  if (isHotbar && isSelected && justSwitched) el.classList.add('hb-just-sel');   // 切选弹跳（K 动效）
 
   if (!slot) return el;                      // 空槽（无物品空格已按 4 态加好框）
   const cls = slot.kind === 'seed' ? 'seed' : (slot.kind === 'tool' ? 'tool' : (slot.kind === 'resource' ? 'resource' : 'crop'));
@@ -833,12 +836,16 @@ UI._renderBottomHotbar = function() {
   else Player._dedupeHotbarMoney(); // 渲染前兜底去重：无论何种路径，快捷栏至多显示一个金锭
   UI._bindBottomHotbar();
   grid.innerHTML = '';
+  const _prevSel = (this._hbBottomPrevSel != null) ? this._hbBottomPrevSel : Player._hotbarSel;
   for (let i = 0; i < 9; i++) {
     const idx = 27 + i;
     const slot = Player.invSlots[idx];
     const cell = document.createElement('div');
     cell.className = 'hotbar-cell';
-    if (i === Player._hotbarSel) cell.classList.add('selected');
+    if (i === Player._hotbarSel) {
+      cell.classList.add('selected');
+      if (i !== _prevSel) cell.classList.add('hb-just-sel');   // 切选弹跳（K 动效）
+    }
     cell.dataset.index = i;
     // 商店打开时启用拖拽，允许从快捷栏拖金锭到商店输入框
     if (UI._shopOpen && slot) {
@@ -913,6 +920,7 @@ UI._renderBottomHotbar = function() {
     }
     grid.appendChild(cell);
   }
+  this._hbBottomPrevSel = Player._hotbarSel;   // 记录本次选中，供下次切选判定弹跳（K 动效）
 };
 
 /** 一次性绑定底部快捷栏滚轮、点击和触摸滑动事件 */

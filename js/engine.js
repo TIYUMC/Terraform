@@ -127,7 +127,7 @@ const Engine = {
     // 限制：仅晚上 6 点（18:00）之后才允许主动睡觉（用户要求）
     if (this.hour < 18) {
       if (typeof UI !== 'undefined' && UI.showStatus) {
-        UI.showStatus('🌙 还没到晚上 6 点，不能睡觉', 1500);
+        UI.showStatus('还没到 18:00，不能睡觉', 1500);
       }
       return;
     }
@@ -163,18 +163,11 @@ const Engine = {
   // ─────────────────────────────────────────────
   /** 格式化时间显示 */
   getTimeString() {
-    const h = this.hour;
+    // 24 小时制：hour 兜底到 [0,23]，任何越界值（如旧存档 25）都按 24 取模回到当天合法区间，
+    // 永不出现「25点 / 25:xx」之类越界显示。
+    const h = ((this.hour % 24) + 24) % 24;
     const m = String(this.minute).padStart(2, '0');
-    // 上午: 5~11 (含 6:00 起床)
-    // 下午: 12~17
-    // 晚上: 18~23
-    // 午夜: 0~4 (通常不会出现，因为 24:00 触发睡觉)
-    if (h >= 5 && h < 12)  return `上午 ${h}:${m}`;
-    if (h === 12)           return `中午 12:${m}`;
-    if (h >= 13 && h < 18) return `下午 ${h - 12}:${m}`;
-    if (h >= 18 && h < 24) return `晚上 ${h - 12}:${m}`;
-    if (h === 0)           return `午夜 0:${m}`;
-    return `${h}:${m}`;
+    return `${String(h).padStart(2, '0')}:${m}`;
   },
 
   getDateString() {

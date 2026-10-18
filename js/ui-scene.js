@@ -126,17 +126,44 @@ const _sceneMethods = {
 
       this._vegCache = null;                              // 切场：失效旧 vegCache，防止跨场景残留
 
-      const cs = this.cellSize;
-      const cx = this.scene === 'farm' ? cs : this.canvas.width - cs;   // 尘爆在新场景按钮那一侧的画布边缘（farm=左缘、treeFarm=右缘）一格内
-      const cy = this.canvas.height / 2;
-
       this._updateNavBtn();
 
-      if (this._particles) {
+      // 0.8.32：切场尘爆画在覆盖画布 #scene-fx-canvas 上（盖 game-area 含两侧空隙），
+      // 坐标=按钮中心-覆盖画布左上角（无 clamp，可进画布外空隙）——修 0.8.31「粒子在画布内被截断」。
+      const _fxCanvas = this._sceneFxCanvas;
+      if (_fxCanvas) {
+        const _ga = _fxCanvas.parentElement;
+        if (_fxCanvas.width !== _ga.clientWidth) _fxCanvas.width = _ga.clientWidth;   // 切场时同步覆盖画布尺寸（含两侧空隙）
+        if (_fxCanvas.height !== _ga.clientHeight) _fxCanvas.height = _ga.clientHeight;
+      }
+      const _nbtn = document.getElementById('nav-scene-btn');
+      const _nrect = _nbtn ? _nbtn.getBoundingClientRect() : null;
+      const _frect = _fxCanvas ? _fxCanvas.getBoundingClientRect() : null;
+      let cx, cy;
+      if (_nrect && _frect && _nrect.width > 0) {
+        // 0.8.38：竖屏强制横屏（#game-container rotate(90deg) translateY(-100%)，css L1721-1731）下，
+        // 两屏幕 AABB 的左上角差混入横向偏移→尘爆落错角；以屏幕中心差做锚 + 90°顺时针逆映射，
+        // 与 _eventToCanvas（ui-events.js L154-155，0.8.5）同源公式。
+        const isPortrait = window.matchMedia && window.matchMedia('(orientation: portrait)').matches;
+        if (isPortrait) {
+          const W = _fxCanvas.width, H = _fxCanvas.height;   // _frect 非空 ⇒ _fxCanvas 非空（L141 三元），此处不会取 undefined
+          const dx = _nrect.left + _nrect.width / 2 - (_frect.left + _frect.width / 2);
+          const dy = _nrect.top + _nrect.height / 2 - (_frect.top + _frect.height / 2);
+          cx = W / 2 + dy;  cy = H / 2 - dx;
+        } else {
+          cx = _nrect.left + _nrect.width / 2 - _frect.left;
+          cy = _nrect.top + _nrect.height / 2 - _frect.top;
+        }
+      } else {
+        cx = _fxCanvas ? (_fxCanvas.width / 2) : this.canvas.width / 2;   // 兜底（覆盖画布缺失时退回画布中心）
+        cy = _fxCanvas ? (_fxCanvas.height / 2) : this.canvas.height / 2;
+      }
+
+      if (this._sceneFxParticles) {   // 0.8.32：切场粒子画在覆盖画布，守卫改查 _sceneFxParticles（主粒子系统常为空）
 
         // 用刚注册的粒子贴图（generic_0~7），不含 nether_star
 
-        this._particles.spawn(cx, cy, {
+        this._sceneFxParticles.spawn(cx, cy, {   // 0.8.32：切场粒子画在覆盖画布（_sceneFxParticles），不再画进游戏画布
 
           imgKeys: ['generic_0', 'generic_1', 'generic_2', 'generic_3', 'generic_4', 'generic_5', 'generic_6', 'generic_7'],
 
@@ -943,19 +970,21 @@ const _sceneMethods = {
           isBare = !!(TreeFarm.bare && TreeFarm.bare[r] && TreeFarm.bare[r][c]);
         } else {
           const cell = Farm.grid[r] && Farm.grid[r][c];
-          if (cell && cell.crop) {
-            // §1.4 作物描边：植株本体烘进 A（剔除进度条/成熟金线），只描植株避免耕地白框；
-            // 与树苗/树冠同口径——中性烘焙（globalAlpha=1、imageSmoothing=false），B 段 destination-out 才擦得净。
-            const x = c * cs, y = r * cs;
-            a.save();
-            a.imageSmoothingEnabled = false;
-            a.globalAlpha = 1;
-            this._bakeCropBody(a, x, y, cs, cell);
-            a.restore();
-            centroids.push({ x: x + cs / 2, y: y + cs / 2 });   // 作物格纳入逐格追光，只 push 一次
-            continue;
+          if (cell) {
+            // §1.4 恢复：生长中作物把植株体烘进 A（合并外轮廓源）出白边——与树苗同烘法
+            //（a.save / smoothing off / globalAlpha=1 / 逐字抄 _drawCropCell 的 plant 参数）。
+            // 成熟作物走金环 _drawCropGoldOutline，不叠白边（金环是独立离屏，不进这套草合并 A）。
+            // 翻土格（无作物耕地 / 作物格）本就不走草烘焙，continue 保持原行为。
+            // 坐标用 c*cs / r*cs（此处 x,y 尚未在 L968 声明）。
+            if (cell.crop && !Farm._isGrown(cell)) {
+              a.save();
+              a.imageSmoothingEnabled = false;
+              a.globalAlpha = 1;
+              this._bakeCropBody(a, c * cs, r * cs, cs, cell);
+              a.restore();
+            }
+            continue;   // 翻土格（无作物耕地 / 作物）→ 不走草烘焙
           }
-          if (cell) continue;   // 耕地（无作物）→ 不描边
           gstate = (Farm.grass && Farm.grass[r]) ? (Farm.grass[r][c] || 0) : 0;
           isBare = !!(Farm.bare && Farm.bare[r] && Farm.bare[r][c]);
           flower = (Farm.flowers && Farm.flowers[r]) ? (Farm.flowers[r][c] || 0) : 0;
@@ -1265,6 +1294,63 @@ const _sceneMethods = {
     o.globalCompositeOperation = 'source-over';
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(B, x, y);
+  },
+
+  /** 0.8.18 · 甲2 成熟金环呼吸（烘焙）：静态场景重建时，把所有成熟作物格的植株本体烘进全幅离屏 A，
+   *  再走与草描边同源的「8 向外扩→擦心→染金」流水线 → 得到「全幅成熟金环」一层（相邻成熟格金环自然并连）。
+   *  失效触发与 _rebuildFarmCache 一致（换季/跨天/尺寸/农场变化），零新增缓存 key。动态层 _drawGrownGoldOverlay 按呼吸 alpha 叠回。 */
+  _ensureGrownGold() {
+    if (this.scene !== 'farm') return;
+    if (!this._grownGoldCanvas) this._grownGoldCanvas = document.createElement('canvas');
+    if (!this._grownGoldBody) this._grownGoldBody = document.createElement('canvas');
+    const W = this.canvas.width, H = this.canvas.height;
+    const G = this._grownGoldCanvas, T = this._grownGoldBody;
+    if (G.width !== W || G.height !== H) { G.width = W; G.height = H; }
+    if (T.width !== W || T.height !== H) { T.width = W; T.height = H; }
+    const cs = this.cellSize;
+    const t = T.getContext('2d');
+    t.setTransform(1, 0, 0, 1, 0, 0);
+    t.clearRect(0, 0, W, H);
+    t.imageSmoothingEnabled = false;
+    t.globalAlpha = 1;
+    this._forEachFarmCell(cs, (r, c, x, y) => {
+      const cell = (Farm.grid[r] && Farm.grid[r][c]) || null;
+      if (cell && cell.crop && Farm._isGrown(cell)) this._bakeCropBody(t, x, y, cs, cell);
+    });
+    const g = G.getContext('2d');
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, W, H);
+    g.imageSmoothingEnabled = false;
+    const O = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, -1], [-1, 1], [1, 1]];
+    for (let i = 0; i < 8; i++) g.drawImage(T, O[i][0], O[i][1]);
+    g.globalCompositeOperation = 'destination-out'; g.drawImage(T, 0, 0);
+    g.globalCompositeOperation = 'source-in'; g.fillStyle = '#ffd700'; g.fillRect(0, 0, W, H);
+    g.globalCompositeOperation = 'source-over';
+    this._grownGoldRev = this._grassDataRev;
+  },
+
+  /** 0.8.18 · 甲2 成熟金环呼吸（动态层）：全幅成熟金环离屏按呼吸 alpha 叠回，与耕地绿边同频（performance.now()/320，周期≈2s）。
+   *  每帧仅 1 次全幅 drawImage + 1 次 alpha，与 blit 同量级，满屏成熟也不掉帧。reduced-motion 下常亮不呼吸。
+   *  静态层死静金环（_drawCropCell 内 _drawCropGoldOutline）保留当最低亮度底，双保险。 */
+  _drawGrownGoldOverlay(ctx, cs) {
+    if (this.scene !== 'farm') return;
+    if (!this._grownGoldCanvas || !this._grownGoldCanvas.width || this._grownGoldRev !== this._grassDataRev) this._ensureGrownGold();
+    const G = this._grownGoldCanvas;
+    if (!G || !G.width) return;
+    if (this._reducedMotion === undefined) {
+      const mq = (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)')) || null;
+      this._reducedMotion = !!(mq && mq.matches);
+      if (mq && mq.addEventListener) mq.addEventListener('change', (e) => { this._reducedMotion = e.matches; });
+    }
+    ctx.imageSmoothingEnabled = false;
+    if (this._reducedMotion) {
+      ctx.globalAlpha = 0.95;
+    } else {
+      const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 320);
+      ctx.globalAlpha = 0.5 + 0.45 * pulse;
+    }
+    ctx.drawImage(G, 0, 0);
+    ctx.globalAlpha = 1;
   },
 
   /** 画一格已耕地里长着的作物：成熟用最后一帧生长贴图，生长中按进度选 assetStages 帧并缩放；

@@ -179,7 +179,7 @@
         _jumpToSeason(v);
       });
     }
-    // 时间倍速下拉（0.5x / 1.0x / 3x）：只缩放 tick 间隔，与调试模式互斥（选倍速自动关调试模式）
+    // 时间倍速下拉（0.1x / 1.0x / 10x）：只缩放 tick 间隔，与调试模式互斥（选倍速自动关调试模式）
     const timeScaleSel = document.getElementById('time-scale');
     if (timeScaleSel) timeScaleSel.addEventListener('change', () => {
       const s = parseFloat(timeScaleSel.value);
@@ -191,6 +191,32 @@
       UI.showStatus('时间倍速 ' + s + 'x', 1000);
     });
     // 调试：改天气下拉（晴 / 雨 / 大风，冬季雨显示为雪）。占位项「天气…」无效值忽略；同状态不重置倒计时。
+    // 0.8.29：设置面板 toggle——点「设置」齿轮按钮显/隐 #settings-panel（大框.png 背景，收拢调试下拉）
+    const btnSettings = document.getElementById('btn-settings');
+    const settingsPanel = document.getElementById('settings-panel');
+    if (btnSettings && settingsPanel) {
+      // 齿轮图标：设置.png 16x16 等比放大到 28x28（tool-icon 规格），相对路径不进 assets.js
+      btnSettings.querySelector('.tool-icon').style.cssText =
+        'background:url(设置.png) center/28px 28px no-repeat; width:28px; height:28px; image-rendering:pixelated;';
+      // 0.8.35：设置面板是 fixed 全屏遮罩（z9990 盖住顶栏齿轮），0.8.31 后只有开、没有收 → 卡死。补三条出口，全部走同一收口函数：
+      const _closeSettings = () => { settingsPanel.style.display = 'none'; };
+      btnSettings.addEventListener('click', () => {
+        if (settingsPanel.style.display === 'none') settingsPanel.style.display = 'flex';   // 开
+        else _closeSettings();                                                            // 齿轮被遮罩盖住时点不到，toggle 分支保留防呆
+      });
+      // 出口①：卡片内「关闭」按钮（0.8.31 全屏遮罩后顶栏齿轮被盖住，卡片内必须有可见收口）
+      const btnCloseSettings = document.getElementById('btn-close-settings');
+      if (btnCloseSettings) btnCloseSettings.addEventListener('click', _closeSettings);
+      // 出口②：Esc（与 credits Esc 互不冲突——credits 是 z10001 全屏层，settings 是 z9990，同按 Esc 两收不互相影响）
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && settingsPanel.style.display !== 'none') _closeSettings();
+      });
+      // 出口③：点遮罩空白处（卡片外）收起；点卡片内（下拉/调试开关/关闭按钮）不冒泡到遮罩
+      settingsPanel.addEventListener('click', (e) => {
+        if (e.target === settingsPanel) _closeSettings();
+      });
+    }
+
     const weatherJump = document.getElementById('weather-jump');
     if (weatherJump) weatherJump.addEventListener('change', () => {
       const v = weatherJump.value;
@@ -218,18 +244,31 @@
       if (typeof UI !== 'undefined' && UI.showStatus) UI.showStatus('时间：' + names[v], 1000);
     });
     // 任务书入口：底部工具栏紫色书按钮（商店右边），点开/关任务书
+    // 0.8.25 调试·一键完成所有任务：选「一键全部完成」→ Quest.debugCompleteAll() 强制全勾，走同款完成钩子；选完复位占位
+    const questJump = document.getElementById('quest-jump');
+    if (questJump) questJump.addEventListener('change', () => {
+      if (questJump.value !== 'all') return;
+      if (typeof Quest !== 'undefined' && Quest.debugCompleteAll) Quest.debugCompleteAll();
+      questJump.value = '';
+      if (typeof UI !== 'undefined' && UI.showStatus) UI.showStatus('已一键完成所有任务', 1200);
+    });
+
     const questBtn = document.getElementById('btn-quest');
     if (questBtn) questBtn.addEventListener('click', () => UI.openQuest());
 
     // 标题界面按钮绑定（「继续游戏」按钮已改为「存档选择下拉 + 进入游戏」）
+    var _slotPickMode = 'continue';   // 0.8.27：选档入口区分——'continue'=选择存档读档 / 'new'=单人游戏覆盖开新
     const btnNewGame = document.getElementById('btn-new-game');
     // 裸绑定 `_startNewGame` 会被 addEventListener 把 MouseEvent 当第 1 参传入，
     // requestedSlot=事件对象（truthy）→ target=事件 → 落槽「空槽优先/三槽满 confirm」整段被跳过、
     // SaveGame.currentSlot 被置成事件对象（脏值）→ 后续所有无参 save() 走 SLOT_KEYS[事件]=undefined 静默失败。
     // 改箭头闭包不传参：requestedSlot=undefined → target=null → 空槽优先逻辑正常跑。
-    if (btnNewGame) btnNewGame.addEventListener('click', function () { _startNewGame(); });
+    if (btnNewGame) btnNewGame.addEventListener('click', function () {
+      _slotPickMode = 'new';   // 单人游戏入口：进选档大框，选槽即覆盖开新
+      _openSlotPanel();
+    });
     // 存档选择： 自定义下拉（原生 <option> 弹层由浏览器自绘、无法设背景，改「按钮 + 浮层列表」）。
-    // 选中即进——有档槽 _continueGame(N)，空槽 confirm 后 _startNewGame(N)（口径，逻辑从原 change 监听体搬进面板项 click）。
+    // 0.8.27：选档分入口——选择存档=继续读档；单人游戏=选槽覆盖开新（_slotPickMode 区分，逻辑在面板项 click）。
     // #save-slot 原生 select 隐藏保留（作 value 兜底链路：面板项点选后写回 value，不删）。
     const selSaveSlot = document.getElementById('save-slot');
     const slotBtn = document.getElementById('save-slot-btn');
@@ -238,8 +277,14 @@
     // 浮层背景用素材库 enchantment 深蓝横幅（base64 运行时才有，跟 ui-quest.js R['enchantment'] 同款手法）。
     // 曾给隐藏 select 装背景，现随 select 隐藏一并撤掉。
     if (selSaveSlot) selSaveSlot.style.backgroundImage = '';
-    if (slotPanel && typeof ASSETS !== 'undefined' && ASSETS.registry['enchantment'])
-      slotPanel.style.backgroundImage = `url(${ASSETS.registry['enchantment']})`;
+    // 0.8.27：#save-slot-panel 外框走 css border-image:url(../大框.png)，不再运行时注入 enchantment（避免与大框 fill 打架）
+    function _openSlotPanel() {
+      if (!slotPanel) return;
+      slotPanel.style.display = 'block';
+      slotPanel.classList.remove('slot-panel-anim');
+      void slotPanel.offsetWidth; // 强制重排，确保动画每次重放
+      slotPanel.classList.add('slot-panel-anim');
+    }
     // 0.6.5：贴图只贴居中卡片 #confirm-card（不是全屏遮罩 overlay），同款手法运行时注入（无则跳过、卡片纯深蓝兜底）
     const confirmCard = document.getElementById('confirm-card');
     if (confirmCard && typeof ASSETS !== 'undefined' && ASSETS.registry['enchantment'])
@@ -291,6 +336,7 @@
     if (slotBtn && slotPanel && selSaveSlot) {
       // 按钮 click → toggle 浮层（none/block）
       slotBtn.addEventListener('click', function () {
+        _slotPickMode = 'continue';   // 选择存档入口：读档继续
         var open = slotPanel.style.display === 'none';
         slotPanel.style.display = open ? 'block' : 'none';
         if (open) {
@@ -311,17 +357,22 @@
         slotBtn.textContent = opt.textContent;
         slotPanel.style.display = 'none';
         slotPanel.classList.remove('slot-panel-anim');
-        if (opt.dataset.value === '') return;   // 占位项「选择存档…」不进游戏（与原生默认项一致）
+        if (opt.dataset.value === '') return;   // 防御：无 value 项不进（占位项已移除，留空防呆）
         const N = parseInt(opt.dataset.value, 10);
-        if (isNaN(N) || !SaveGame.hasSave(N)) {
-          // 0.6.5：原生 confirm 改自定义弹窗（微信/移动内嵌浏览器屏蔽原生 confirm）
+        if (isNaN(N)) return;
+        // 0.8.27：选档按入口分语义——选择存档=继续读档；单人游戏=选槽覆盖开新；空槽一律 confirm 后开新
+        // 0.6.5：原生 confirm 改自定义弹窗（微信/移动内嵌浏览器屏蔽原生 confirm）
+        if (!SaveGame.hasSave(N)) {
           _showConfirm('存档 ' + N + ' 是空的，将以此槽开新游戏，继续？', function () { _startNewGame(N); }, function () {});
+        } else if (_slotPickMode === 'new') {
+          _showConfirm('存档 ' + N + ' 已有进度，覆盖将开新游戏、旧进度丢失，继续？', function () { _startNewGame(N); }, function () {});
         } else {
-          _continueGame(N);
+          _continueGame(N);   // 选择存档入口：直接继续读档
         }
       });
       // 点浮层外部 → 关浮层（document 委托；绑定段在 init() 只跑一次、标题页组件不随重进重挂，挂一次无累积泄漏）
       document.addEventListener('click', function (e) {
+        if (e.target === btnNewGame) return;   // 0.8.27fix3: 单人游戏入口开面板的点击不被外部委托秒关
         if (slotWrap && slotWrap.contains(e.target)) return;   // 内部点击（按钮/面板项）由各自监听处理
         slotPanel.style.display = 'none';
         slotPanel.classList.remove('slot-panel-anim');
@@ -422,7 +473,7 @@
   /**
  * 标题页存档槽位下拉：
    * #save-slot 生成 3 个 option——有档槽文案「存档 N · 秋3日 第1年 · 10/3」（listSlots 摘要），
- * 空槽文案「存档 N · 空」，value = 槽号。选中槽即进：有档槽 _continueGame(N)，空槽 confirm 后 _startNewGame(N)（已移除「进入游戏」按钮）。
+ * 空槽文案「存档 N · 空」，value = 槽号。0.8.27 起分入口：选择存档点槽=继续读档(_continueGame)，单人游戏点槽=覆盖开新(_startNewGame)，空槽 confirm 后开新（已移除「进入游戏」按钮）。
    * 每次进标题页重建 option（摘要随最新存档刷新）。select 不做入场动画（原生下拉加动画易穿帮）。
  * #save-slot 原生 select 已隐藏（option 弹层浏览器自绘无法设背景），option 生成循环原样搬到填充自定义浮层
    * #save-slot-panel——每项一个 <div class="save-slot-opt" data-value="N">，文案公式一字不动；sel 不再写入。
@@ -431,12 +482,7 @@
     var panel = document.getElementById('save-slot-panel');
     if (!panel) return;
     panel.innerHTML = '';
-    var placeholder = document.createElement('div');
-    placeholder.className = 'save-slot-opt';
-    placeholder.dataset.value = '';
-    placeholder.textContent = '选择存档…';
-    placeholder.style.setProperty('--i', '0');
-    panel.appendChild(placeholder);
+    // 0.8.27：大框选档去掉占位项，直接罗列 3 个存档槽（listSlots 全量）
     if (typeof SaveGame === 'undefined' || !SaveGame.listSlots) return;
     SaveGame.listSlots().forEach(function (r) {
       var o = document.createElement('div');
@@ -631,6 +677,7 @@
     Player._mainShownRes = null;   // 新游戏清主背包「显示过的资源」记忆（上一局空格不泄漏到本局）
     UI.render();
     UI._renderBottomHotbar();
+    UI._refreshShopLock();   // 0.8.23：进游戏刷商店解锁态（老档 m3 已完成 → 恢复按钮）
     UI._startAnimLoop();
     // 标题淡出
     _titleTransitionOut(function() {
@@ -657,6 +704,7 @@
     Player._mainShownRes = null;   // 读档进游戏清主背包记忆（不同档的背包布局互不污染）
     UI.render();
     UI._renderBottomHotbar();
+    UI._refreshShopLock();   // 0.8.23：进游戏刷商店解锁态（老档 m3 已完成 → 恢复按钮）
     UI._startAnimLoop();
     // 标题淡出
     _titleTransitionOut(function() {

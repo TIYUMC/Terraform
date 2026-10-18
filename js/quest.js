@@ -80,6 +80,7 @@ const Quest = {
       if (typeof Player !== 'undefined') Player.questsDone = done;
       // 任务书开着则实时刷新
       if (typeof globalThis.UI !== 'undefined' && globalThis.UI._questOpen && globalThis.UI._renderQuest) globalThis.UI._renderQuest();
+      if (typeof globalThis.UI !== 'undefined' && globalThis.UI._refreshShopLock) globalThis.UI._refreshShopLock();   // 0.8.23：任务节点完成 → 重评商店门控（m3 首次完成即亮按钮）
     }
   },
 
@@ -104,6 +105,17 @@ const Quest = {
     const quests = (typeof DATA !== 'undefined' && DATA.QUESTS) || [];
     const q = quests.find(x => x.id === id);
     return !!(q && q.track && q.track.k === 'always');
+  },
+
+  /** 0.8.25 调试用：一键强制完成全部任务节点（含 manual/submit 型，正常玩法绝不走此路径）。
+   *  仅调试下拉触发；把每个节点 done[id]=true 后走 _evaluate changed 同款钩子刷任务书 + 商店门控。 */
+  debugCompleteAll() {
+    const quests = (typeof DATA !== 'undefined' && DATA.QUESTS) || [];
+    const done = this._done();
+    for (const x of quests) { done[x.id] = true; }
+    if (typeof Player !== 'undefined') Player.questsDone = done;
+    if (typeof globalThis.UI !== 'undefined' && globalThis.UI._questOpen && globalThis.UI._renderQuest) globalThis.UI._renderQuest();
+    if (typeof globalThis.UI !== 'undefined' && globalThis.UI._refreshShopLock) globalThis.UI._refreshShopLock();
   },
 
   /** 达成提示 */

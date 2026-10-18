@@ -146,6 +146,9 @@ const Farm = {
     if (!this._isGrassState(g)) return 'no_grass';
     this.grass[row][col] = 0;
     if (this.bare[row]) this.bare[row][col] = false; // 变回普通草方块（非裸土），之后才能锄地
+    // 除草（绿草/枯草）20% 几率爆 1~2 个小麦种子（0.8.28：主农场除草掉落；锄花/树场不动）
+    this._lastGrassDrop = 0;   // 0.8.30：掉落量记录，供 UI 除草飘字（_floatText 读 Farm._lastGrassDrop）
+    if (Math.random() < 0.2 && typeof Player !== 'undefined') { this._lastGrassDrop = 1 + Math.floor(Math.random() * 2); Player.addSeeds('wheat', this._lastGrassDrop); } // 20% 掉 1~2 个
     return 'ok';
   },
 

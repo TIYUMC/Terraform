@@ -51,7 +51,7 @@ const DATA = {
       name: '土豆', seedCost: 5, sellPrice: 25, color: '#9DBB6A',
       growDays: 6, regrow: false,
       sprite: '🌿', harvestSprite: '🥔',
-      assetStages: ['potatoes_stage0', 'potatoes_stage1', 'potatoes_stage2', 'potatoes_stage3', 'potato'],
+      assetStages: ['potatoes_stage0', 'potatoes_stage1', 'potatoes_stage2', 'potatoes_stage3'],
       assetHarvest: 'potato',
     },
     strawberry: {

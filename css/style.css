@@ -104,6 +104,15 @@ body {
   /* width/height 由 JS 设置，与 buffer 一致，以免鼠标坐标偏移 */
 }
 
+/* 0.8.32：切场尘爆覆盖画布——盖住整个 #game-area（含两侧空隙，absolute 相对 game-area），
+   让切场粒子能落在画布外的左右切换按钮上；透明、不挡点击(pointer-events:none)；z30 高于 nav 按钮(z20)、低于面板(z50+)。 */
+#scene-fx-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+}
+
 /* ===== 切场导航箭头（0.5.11 DOM 化）：悬浮在 canvas 两侧、不压任何可耕格 ===== */
 #nav-scene-btn {
   position: absolute;
@@ -265,6 +274,81 @@ body {
 .debug-selects {
   display: grid; grid-template-columns: repeat(2, auto); gap: 3px;
 }
+
+/* 0.8.29：设置面板——大框.png 128x128 等比放大铺满（background-size:100% 100%，方形面板 ~1.4x），
+   收拢 5 个调试下拉为单列；面板默认隐藏（style=display:none），点「设置」齿轮按钮 toggle 显隐。 */
+#settings-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 9990;
+  display: none;
+  background: rgba(6, 10, 20, .55);
+  align-items: center;
+  justify-content: center;
+}
+/* 0.8.31：设置弹窗卡片——大框.png 等比放大铺满（340px），调试开关+5 下拉收拢在内 */
+.settings-card {
+  width: 340px;
+  position: relative;   /* 0.8.36：右上角关闭叉定位锚 */
+  box-sizing: border-box;
+  background-color: #6b4a2a;
+  background-image: url(../大框.png);
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  padding: 30px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.settings-card .tool-btn {
+  align-self: stretch;
+  flex-direction: row;
+  justify-content: center;
+  min-width: 0;
+  background: rgba(0, 0, 0, .15);
+  border-color: transparent;
+}
+#settings-panel .debug-selects-label {
+  font-size: 11px;
+  color: #fff;
+  text-shadow: 1px 1px 0 rgba(0,0,0,.6);
+  text-align: center;
+  margin-bottom: 2px;
+  font-family: 'Silkscreen', sans-serif;
+}
+#settings-panel .debug-selects {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+#settings-panel select {
+  width: 140px;          /* 0.8.33：调试下拉贴内容定宽（原 width:100% 撑满卡片≈300px，几个字也拉成一条） */
+  align-self: center;    /* 卡片内居中竖排，不再顶满整宽 */
+}
+/* 0.8.36：设置卡片右上角关闭叉（Cancel.png=MC 取消图标，红色方底黑叉，1024×1024 透明底；
+   取代 0.8.35 卡片底部「关闭」文字行。id 规则压过 .settings-card .tool-btn 的拉伸/半透明底，绝对定位脱离 flex 流。 */
+#btn-close-settings {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  min-width: 0;
+  border: none;
+  border-radius: 0;
+  background: url(../Cancel.png) center / 26px 26px no-repeat;
+  image-rendering: pixelated;
+  opacity: .95;
+}
+/* 0.8.36：「调试」开关行窄到 140px 居中，与 5 下拉同宽对齐（原 .settings-card .tool-btn align-self:stretch 满宽） */
+#btn-inv-debug {
+  align-self: center;
+  width: 140px;
+  min-width: 0;
+}
+
 /* 调试 cluster 内下拉统一外观（跳季/倍速/天气三框共用；原 #season-jump 与 #time-scale 两份重复块已合并，顺带给 #weather-jump 补上） */
 .debug-cluster select {
   background: #1c1c22;
@@ -911,6 +995,7 @@ body {
 /* 节点进场：淡入 + 轻微放大 + 上移，按 --i 错峰；动画结束由 JS 移除 .qenter，交还 hover 控制权 */
 .qenter { animation: qenter .46s cubic-bezier(0.16,1,0.3,1) both; }
 @keyframes qenter { from { opacity: 0; transform: translateY(10px) scale(.82); } to { opacity: 1; transform: none; } }
+
 /* 连线绘制：stroke-dashoffset 从 pathLength(=100)→0，按 --i 错峰，呈现「自己画出来」的效果 */
 .q-link { stroke-dasharray: 100; stroke-dashoffset: 100; animation: qdraw .6s cubic-bezier(0.16,1,0.3,1) both; animation-delay: calc(var(--i, 0) * 55ms); }
 @keyframes qdraw { to { stroke-dashoffset: 0; } }
@@ -1208,20 +1293,23 @@ body {
 /* 标题页自定义存档下拉浮层（0.5.24：原生 option 弹层无法设背景，改按钮 + 浮层组件；弹层 background 用注册表 enchantment 贴图） */
 #save-slot-wrap { position: relative; width: 280px; }
 #save-slot-panel {
-  position: absolute; top: 100%; left: 0; width: 100%; z-index: 11;
-  background-color: #1a1230;            /* 贴图未加载完成时的兜底深蓝 */
-  background-size: cover;                /* 横幅 4.414:1，浮层窄高 → 取中段 */
-  background-position: center;
-  border: 1px solid #2a1a4a;
-  margin-top: 4px;
+  position: absolute; top: 100%; left: 0; width: 100%; height: 280px; z-index: 11;
+  display: flex; flex-direction: column; justify-content: center; gap: 8px;
+  background-color: #6b4a2a;
+  background-image: url(../大框.png);   /* 0.8.27fix5: 整张方框等比放大铺满（方形面板 280x280，四角花草不重复不变形） */
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  margin-top: 8px;
+  padding: 54px;
   font-family: 'Silkscreen', sans-serif;
 }
 /* 存档面板入场：与背包/任务书同套观感（淡入+轻微上移缩放，像素风无 glow/边框） */
 #save-slot-panel.slot-panel-anim { animation: panelIn .42s cubic-bezier(0.16,1,0.3,1) both; }
 #save-slot-panel.slot-panel-anim .save-slot-opt { animation: slotIn .42s cubic-bezier(0.16,1,0.3,1) both; animation-delay: calc(var(--i,0) * 26ms); }
-.save-slot-opt { padding: 8px 10px; color: #fff; font-size: 14px; cursor: pointer; }
-.save-slot-opt:hover { background: rgba(255,255,255,0.15); }
-.save-slot-opt.selected { background: rgba(120,80,200,0.35); }
+.save-slot-opt { padding: 10px 12px; color: #fff; font-size: 15px; cursor: pointer; text-shadow: 1px 1px 0 rgba(0,0,0,.85); }
+.save-slot-opt:hover { background: rgba(0,0,0,.25); }
+.save-slot-opt.selected { background: rgba(0,0,0,.4); }
 /* 0.6.5：自定义确认对话框。全屏层只做半透明遮罩，贴图只贴居中小卡片（enchantment，像素风） */
 #confirm-overlay {
   position: fixed; inset: 0; z-index: 10000; display: none;
@@ -1381,15 +1469,6 @@ body {
 }
 .status-visible { animation: statusPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
 
-/* 快捷栏切选弹跳（K 动效）：仅 transform，120ms，无布局抖动 */
-@keyframes hbSelPop {
-  from { transform: scale(1.08); }
-  to   { transform: scale(1); }
-}
-.hb-just-sel {
-  animation: hbSelPop 120ms ease;
-  z-index: 21;
-}
 
 /* hover 缩放改作用内层 ::before 与 .item-icon，命中区仍是 48px 原格，杜绝边缘死循环 */
 #bottom-hotbar .hotbar-cell.ff-sel::before,
@@ -1745,6 +1824,12 @@ body {
   }
 }
 
+/* 0.8.6：竖屏强制横屏下，工具栏收成单行（热bar+按钮一排），
+   旋转后变细竖条（约 1 格宽），不再两行两列挤占农田宽度。
+   仅作用于竖屏（本游戏竖屏即强制横屏），不动真·横屏断点与桌面。 */
+@media (orientation: portrait) {
+  #toolbar { flex-direction: row; align-items: center; gap: 4px; padding: 4px 6px; }
+}
 
 /* 背包/商店/任务面板：禁止触屏滚动干扰交互 */
 #inventory-overlay.overlay-visible,
@@ -1779,3 +1864,23 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .quest-frame.shake { animation: none; }
 }
+
+
+/* 0.8.17 甲·收获作物飞进快捷栏：飞行体（fixed overlay，z-index 10002，压在 title9999/confirm10000/credits10001 之上）+ 落地轻弹 */
+.crop-fly {
+  position: fixed;
+  left: 0; top: 0;
+  width: 32px; height: 32px;
+  z-index: 10002;
+  pointer-events: none;
+  overflow: visible;
+  will-change: left, top, transform;
+}
+.crop-fly img { width: 100%; height: 100%; image-rendering: pixelated; image-rendering: -moz-crisp-edges; display: block; }
+@keyframes landPop {
+  0%   { transform: scale(1.28); }
+  60%  { transform: scale(0.94); }
+  100% { transform: scale(1); }
+}
+.hotbar-cell.crop-land { animation: landPop .3s cubic-bezier(.2,.9,.3,1.4) both; }
+@media (prefers-reduced-motion: reduce) { .crop-fly { display: none; } .hotbar-cell.crop-land { animation: none; } }

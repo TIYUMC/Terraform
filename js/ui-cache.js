@@ -161,6 +161,8 @@ const _cacheMethods = {
 
     this._rebuildGrassBase();   // 草格底随静态层一起重建（同失效触发：跨天换季/尺寸/农场变化），保证缓存与静态层像素一致
 
+    this._ensureGrownGold();     // 0.8.18：成熟金环全幅离屏随静态层一起重建（失效触发同上，零新增 key）
+
     this._buildVegCache();      // 草+花离屏缓存：与 _farmCache 同失效触发，render() 中于积雪层之后贴回（草花在雪之上）
 
     this._shakeSnowBaseCache = null;  // 地面状态变化→含雪底缓存失效，下次草颤懒重建时用新底

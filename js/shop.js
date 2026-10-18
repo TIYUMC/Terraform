@@ -18,6 +18,7 @@
 
 /** 打开商店（村民交易 GUI，直接画在游戏画布上，不用 DOM 弹窗） */
 UI.openShop = function() {
+  if (typeof Quest !== 'undefined' && !Quest.isDone('m3')) return;   // 0.8.23：商店门控=任务节点 m3「初次收获」完成后才开
   if (this._shopOpen) return;
   this._shopOpen = true;
   // 打开商店时隐藏主页底部快捷栏：商店界面内已自带快捷栏（拖拽源），避免两份同时显示造成"两组金锭"
@@ -1037,3 +1038,14 @@ UI._onShopMove = function(e) {
 
 
 
+
+
+/** 0.8.23 商店解锁门控：#btn-shop 仅当任务节点 m3（初次收获，自动 track harvest≥1）完成后显示，否则直接消失。
+ *  调用时机：任意任务节点完成（quest.js _evaluate changed 块）+ 进游戏（main.js 新建/读档）。宁缺毋滥：查不到 Quest 视为未解锁。 */
+UI._refreshShopLock = function() {
+  const btn = document.getElementById('btn-shop');
+  if (!btn) return;
+  const unlocked = typeof Quest !== 'undefined' && Quest.isDone('m3');
+  btn.style.display = unlocked ? '' : 'none';
+  if (!unlocked && this._shopOpen && this.closeShop) this.closeShop();   // 极端边界（读档时商店开着且 m3 未完成）：强制关掉
+};

@@ -169,7 +169,9 @@ const TreeFarm = {
     if (g !== 1 && g !== 2) return 'no_grass';
     this.grass[row][col] = 0;
     if (this.bare[row]) this.bare[row][col] = false; // 变回普通草方块（非裸土）
-    return 'ok';
+
+    this._lastGrassDrop = 0;   // 0.8.30：树场除草与主农场对称掉落，供 UI 飘字
+    if (Math.random() < 0.2 && typeof Player !== 'undefined') { this._lastGrassDrop = 1 + Math.floor(Math.random() * 2); Player.addSeeds('wheat', this._lastGrassDrop); }    return 'ok';
   },
 
   /** 树场锄地：树场根系太密，锄头无法耕成耕地，只能翻出「缠根泥土」(rooted_dirt) 地表（纯视觉状态）。

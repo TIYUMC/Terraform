@@ -86,14 +86,12 @@ UI.renderInventory = function() {
   const hotbar = document.getElementById('inv-grid-hotbar');
   if (hotbar) {
     hotbar.innerHTML = '';
-    const _invPrevSel = (this._hbInvPrevSel != null) ? this._hbInvPrevSel : Player._hotbarSel;
     for (let i = 0; i < 9; i++) {
       const idx = 27 + i;
-      const s = this._makeSlot(Player.invSlots[idx], idx, true, i === Player._hotbarSel, i !== _invPrevSel);
+      const s = this._makeSlot(Player.invSlots[idx], idx, true, i === Player._hotbarSel);
       s.style.setProperty('--i', i);
       hotbar.appendChild(s);
     }
-    this._hbInvPrevSel = Player._hotbarSel;   // 记录本次选中，供下次切选判定弹跳（K 动效）
   }
 
   // 合成格：每次渲染背包同步刷新
@@ -103,7 +101,7 @@ UI.renderInventory = function() {
 
 
 /** 构造一个物品格子 DOM（仅展示；交互全部走网格事件委托，不在格子上绑 click） */
-UI._makeSlot = function(slot, index, isHotbar, isSelected, justSwitched) {
+UI._makeSlot = function(slot, index, isHotbar, isSelected) {
   const el = document.createElement('div');
   el.className = 'inv-slot';
   el.dataset.index = index;
@@ -126,7 +124,6 @@ UI._makeSlot = function(slot, index, isHotbar, isSelected, justSwitched) {
     if (isHotbar) { if (this._ensureSlotFrame()) el.classList.add('ff-slot-frame'); }        // 快捷栏行 有物品+未选→slot框（补漏）
   }
   if (!isHotbar && isSelected) el.classList.add('inv-sel');   // 主背包选中格保留黄内描边
-  if (isHotbar && isSelected && justSwitched) el.classList.add('hb-just-sel');   // 切选弹跳（K 动效）
 
   if (!slot) return el;                      // 空槽（无物品空格已按 4 态加好框）
   const cls = slot.kind === 'seed' ? 'seed' : (slot.kind === 'tool' ? 'tool' : (slot.kind === 'resource' ? 'resource' : 'crop'));
@@ -202,6 +199,7 @@ UI._ensureIdleEmptyFrame = function() {
   document.documentElement.style.setProperty('--hotbar-cell-idle-empty', 'url("' + u + '")');
   return true;
 };
+
 
 
 // ─────────────────────────────────────────────
@@ -828,6 +826,65 @@ UI._seedIconKey = function(cropId) {
   return ({ wheat: 'wheat_seeds', potato: 'potato', strawberry: 'mc_sweet_berries', acorn: 'acorn' })[cropId] || 'wheat_seeds';
 };
 
+
+/**
+ * 0.8.17 甲·收获作物飞进快捷栏：从点击点（旋转安全的屏幕坐标 _lastPointer）抛物线飞到快捷栏对应格，落地轻弹。
+ * 纯瞬态 overlay（.crop-fly，fixed，z-index 10002），不碰 _eventToCanvas / 背包数据 / +N 飘字（那是数字反馈，这里管实物飞行）。
+ * 目标格 = 快捷栏内该作物 stack 所在 index（Player.invSlots 显示层，与屏幕一致），找不到落选中格，再找不到落第 0 格。
+ */
+UI._flyCrop = function(cropId, origin) {
+  if (!cropId || !origin) return;
+  const grid = document.getElementById('bottom-hotbar');
+  if (!grid || !grid.children.length) return;
+  const def = (typeof DATA !== 'undefined' && DATA.CROPS) ? DATA.CROPS[cropId] : null;
+  const iconSrc = this._assetURL(def ? def.assetHarvest : cropId) || '';
+  let targetIdx = -1;
+  if (typeof Player !== 'undefined' && Array.isArray(Player.invSlots)) {
+    for (let i2 = 0; i2 < 9; i2++) {
+      const s = Player.invSlots[27 + i2];
+      if (s && s.kind === 'stack' && s.stackId === 'crop:' + cropId && (s.count || 0) > 0) { targetIdx = i2; break; }
+    }
+  }
+  if (targetIdx < 0) {
+    const sel = grid.querySelector('.hotbar-cell.selected');
+    targetIdx = sel ? (parseInt(sel.dataset.index, 10) || 0) : 0;
+  }
+  const target = grid.children[targetIdx] || grid.children[0];
+  if (!target) return;
+  const tr = target.getBoundingClientRect();
+  const size = Math.max(24, Math.min(40, Math.round(tr.width * 0.7) || 32));
+  const el = document.createElement('div');
+  el.className = 'crop-fly';
+  el.innerHTML = iconSrc ? '<img src="' + iconSrc + '" alt="">' : '';
+  el.style.width = el.style.height = size + 'px';
+  document.body.appendChild(el);
+  const sx = origin.x, sy = origin.y;
+  const tx = tr.left + tr.width / 2, ty = tr.top + tr.height / 2;
+  const mx = (sx + tx) / 2, my = Math.min(sy, ty) - 40;   // 中点抬高 40px 抛物线拱
+  const dur = 250, t0 = performance.now();
+  const step = (now) => {
+    const t = Math.min(1, (now - t0) / dur);
+    // 二次贝塞尔：起点(sx,sy) 经控制点(mx,my) 到目标(tx,ty)，中点抬高 40px 抛物线拱
+    const bx = (1-t)*(1-t)*sx + 2*(1-t)*t*mx + t*t*tx;
+    const by = (1-t)*(1-t)*sy + 2*(1-t)*t*my + t*t*ty;
+    el.style.left = (bx - size/2) + 'px';
+    el.style.top  = (by - size/2) + 'px';
+    el.style.transform = 'scale(' + (t < 1 ? (1 + 0.25 * Math.sin(t * Math.PI)).toFixed(3) : 1) + ')';
+    if (t < 1) { requestAnimationFrame(step); }
+    else { this._flashLanding(target); el.remove(); }
+  };
+  requestAnimationFrame(step);
+};
+
+/** 0.8.17 甲·落地轻弹：目标格缩放回弹（.crop-land 由 css landPop 承载），宁缺毋滥。 */
+UI._flashLanding = function(cell) {
+  if (!cell) return;
+  cell.classList.remove('crop-land');
+  void cell.offsetWidth;   // 强制 reflow 让同元素重放动画
+  cell.classList.add('crop-land');
+  setTimeout(() => cell.classList.remove('crop-land'), 320);
+};
+
 /** 渲染底部始终可见的 MC 风格快捷栏（9 格） */
 UI._renderBottomHotbar = function() {
   const grid = document.getElementById('bottom-hotbar');
@@ -836,7 +893,6 @@ UI._renderBottomHotbar = function() {
   else Player._dedupeHotbarMoney(); // 渲染前兜底去重：无论何种路径，快捷栏至多显示一个金锭
   UI._bindBottomHotbar();
   grid.innerHTML = '';
-  const _prevSel = (this._hbBottomPrevSel != null) ? this._hbBottomPrevSel : Player._hotbarSel;
   for (let i = 0; i < 9; i++) {
     const idx = 27 + i;
     const slot = Player.invSlots[idx];
@@ -844,7 +900,6 @@ UI._renderBottomHotbar = function() {
     cell.className = 'hotbar-cell';
     if (i === Player._hotbarSel) {
       cell.classList.add('selected');
-      if (i !== _prevSel) cell.classList.add('hb-just-sel');   // 切选弹跳（K 动效）
     }
     cell.dataset.index = i;
     // 商店打开时启用拖拽，允许从快捷栏拖金锭到商店输入框
@@ -920,7 +975,6 @@ UI._renderBottomHotbar = function() {
     }
     grid.appendChild(cell);
   }
-  this._hbBottomPrevSel = Player._hotbarSel;   // 记录本次选中，供下次切选判定弹跳（K 动效）
 };
 
 /** 一次性绑定底部快捷栏滚轮、点击和触摸滑动事件 */

@@ -95,6 +95,7 @@ const _questMethods = {
 
     const R = (typeof ASSETS !== 'undefined' && ASSETS.registry) || {};
 
+
     tree.innerHTML = '';
 
     // 背景：固定贴在面板上（contain 居中），不参与拖动；
@@ -537,9 +538,9 @@ const _questMethods = {
 
       ic.style.top = (n.y - icSize / 2) + 'px';
 
-      // 完成态显示 confirm（绿色对勾），未完成显示原图标
+      // 0.8.11：完成/未完成节点图标一律回显原任务图标（完成态由框贴图承载，不再挂绿勾 confirm）
 
-      ic.src = R[n.done ? 'confirm' : n.icon] || R[n.icon] || '';
+      ic.src = R[n.icon] || '';   // 0.8.11：完成节点回显原图标（绿勾 confirm 撤掉，完成态由框贴图承载）
 
       tree.appendChild(ic);
 
@@ -640,6 +641,7 @@ const _questMethods = {
       });
 
     });
+
 
 
 
@@ -920,6 +922,7 @@ const _questMethods = {
       clampPan(); apply();
 
     }
+
 
   },
 

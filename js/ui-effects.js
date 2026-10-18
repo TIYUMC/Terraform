@@ -19,6 +19,13 @@ const _effectsMethods = {
 
     if (this._particles) { this._particles.update(dt); this._particles.draw(ctx); }
 
+    // 0.8.32：切场尘爆画在覆盖画布 #scene-fx-canvas（盖 game-area 含两侧空隙），每帧清+更新+绘制
+    if (this._sceneFx && this._sceneFxParticles) {
+      this._sceneFxParticles.update(dt);
+      this._sceneFx.clearRect(0, 0, this._sceneFxCanvas.width, this._sceneFxCanvas.height);
+      this._sceneFxParticles.draw(this._sceneFx);
+    }
+
     if (this._floaters)  { this._floaters.update(dt);  this._floaters.draw(ctx); }
 
     if (this._shake) this._shake.update(dt);

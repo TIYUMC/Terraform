@@ -23,7 +23,7 @@ const Engine = {
   tickTimer: null,
   paused: false,
   debugFast: false,    // 调试模式开关：商店全开锁 / 作物无视浇水快生（商店、farm.js 等读它；时间节奏归 timeScale，不在此决定）
-  timeScale: 1,     // 时间倍速 0.5 / 1 / 3（1.0 = 现状速度）
+  timeScale: 1,     // 时间倍速 0.1 / 1 / 10（1.0 = 现状速度）
 
   // === 外部 hooks ===
   onHourChange: null,     // callback(hour, minute)
@@ -55,7 +55,7 @@ const Engine = {
 
   /** 内部：每分钟滴答（时间节奏只由 timeScale 决定） */
   _startTick() {
-    // msPerTick 按 timeScale 缩放（0.5x→400ms/tick、1x→200ms、3x→≈67ms）；时间节奏统一归 timeScale
+    // msPerTick 按 timeScale 缩放（0.1x→2000ms/tick、1x→200ms、10x→20ms）；时间节奏统一归 timeScale
     const msPerTick = (DATA.REAL_SECS_PER_GAME_HOUR * 1000) / 60 / this.timeScale; // 每分钟
     const tick = () => {
       if (!this.running || this.paused) return;
@@ -84,10 +84,10 @@ const Engine = {
     this._startTick();
   },
 
-  /** 切换时间倍速（0.5x / 1x / 3x）：立即重启计时循环，下一 tick 用新间隔；不丢时钟状态。
+  /** 切换时间倍速（0.1x / 1x / 10x）：立即重启计时循环，下一 tick 用新间隔；不丢时钟状态。
    *  与调试模式互斥：切倍速时若 debugFast 开着则先关掉，二者不叠加。 */
   setTimeScale(scale) {
-    this.timeScale = (scale === 0.5 || scale === 3) ? scale : 1;
+    this.timeScale = (scale === 0.1 || scale === 10) ? scale : 1;
     if (this.debugFast) this.setDebugFast(false);   // 互斥：切正常速度
     this._clearTickTimer();
     if (this.running) this._startTick();            // 立即以新间隔重启滴答

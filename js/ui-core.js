@@ -452,6 +452,10 @@ const UI = {
     // 游戏手感增强（juice.js）：粒子 / 漂浮文字 / 屏幕震动 / 箭头平滑 hover
 
     this._particles = new Juice.ParticleSystem();
+    // 0.8.32：切场尘爆专用覆盖画布（盖 game-area 含两侧空隙），让粒子能落在画布外的左右切换按钮上
+    this._sceneFxCanvas = document.getElementById('scene-fx-canvas');
+    this._sceneFx = this._sceneFxCanvas ? this._sceneFxCanvas.getContext('2d') : null;
+    this._sceneFxParticles = new Juice.ParticleSystem();   // 切场粒子独立系统，画在覆盖画布上
 
     this._floaters  = new Juice.Floaters();
 
@@ -698,6 +702,7 @@ const UI = {
     if (this.scene === 'farm') {
       this._drawWaterOverlay(ctx, cs);
       this._drawFarmlandOverlay(ctx, cs);
+      this._drawGrownGoldOverlay(ctx, cs);   // 0.8.18：成熟金环呼吸（全幅离屏 + 呼吸 alpha，与耕地绿边同频）
     }
 
 
@@ -1004,7 +1009,7 @@ const UI = {
       const snowMoving = this._isWinter() && this._snowFlakes &&
                          this._snowFlakes.some(f => !f.stopped && !f._eaten);
       const leafFalling = this._fallingLeaves && this._fallingLeaves.length > 0;
-      const particlesAlive = this._particles && this._particles.list.length > 0;
+      const particlesAlive = (this._particles && this._particles.list.length > 0) || (this._sceneFxParticles && this._sceneFxParticles.list.length > 0);   // 0.8.32：切场粒子在覆盖画布，也计入活跃
       const needsRender = this._needsRender ||
                           (this._grassShakes && this._grassShakes.length > 0) ||
                           (this._ripples && this._ripples.length > 0) ||

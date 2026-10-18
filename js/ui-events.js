@@ -314,6 +314,7 @@ Object.assign(UI, {
     return this._actionEffect(row, col, DATA.TOOL_COST.harvest, (r, c) => Farm.harvest(r, c), (res) => {
 
       Player.addToInventory(res.cropId, res.count);
+      this._flyCrop(res.cropId, this._lastPointer);
 
       this._invalidateCell(row, col);
 
@@ -355,7 +356,7 @@ Object.assign(UI, {
 
     const grassIcon = this._grassIconHTML(gstate);
 
-    this.showStatus(grassIcon + ' 除掉了草，可以耕地了', 800);
+    this.showStatus(grassIcon + ' 除掉了草，可以耕地了' + (typeof Farm !== 'undefined' && Farm._lastGrassDrop > 0 ? ' · 拾得 ' + Farm._lastGrassDrop + ' 小麦种子' : ''), 800);   // 0.8.31：爆种子并入除草提示
 
   },
 
@@ -514,6 +515,8 @@ Object.assign(UI, {
 
 
   _onCanvasClick(e) {
+    this._lastPointer = { x: (e.clientX !== undefined ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0)),
+                          y: (e.clientY !== undefined ? e.clientY : (e.touches && e.touches[0] ? e.touches[0].clientY : 0)) };
 
     const { x, y } = this._eventToCanvas(e);
 
@@ -880,7 +883,14 @@ Object.assign(UI, {
 
         () => this._tfClearGrassEffect(row, col),
 
-        (res) => { if (res !== 'ok') this.showStatus('❌ 无法除草', 600); });
+        (res) => {
+          if (res !== 'ok') { this.showStatus('❌ 无法除草', 600); return; }
+          // 0.8.37：树场除草成功原静默（种子其实已进背包）；爆种子时出提示，不爆时完全不调
+          //（showStatus 对空串无早退，调 showStatus('') 会闪 800ms 空横幅，故不爆时直接返回）
+          if (typeof TreeFarm !== 'undefined' && TreeFarm._lastGrassDrop > 0) {
+            this.showStatus('拾得 ' + TreeFarm._lastGrassDrop + ' 小麦种子', 800);
+          }
+        });
 
       return;
 

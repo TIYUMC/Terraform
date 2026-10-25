@@ -209,6 +209,7 @@ UI._executeTrade = function(t) {
     if (!chk.ok) { this.showStatus(`❌ ${chk.reason}`, 1400); return; }
     const res = Economy.buyTool(t.cropId);
     if (res && res.ok) {
+      SFX.play('buy');
       this.showStatus(`✅ 购买了 ${res.name}`, 1000);
       Player.selectTool(t.cropId);   // 买完直接装备，方便马上去砍树
       this._updateHeldSlot();
@@ -234,10 +235,12 @@ UI._executeTrade = function(t) {
     // B2 连带：卖分支减去本次实际卖掉的个数（res.count 含库存钳制），买分支仍按 cost 扣
     this._shopDroppedCount -= (t.kind === 'buy') ? cost : res.count;
     if (t.kind === 'buy') {
+      SFX.play('buy');
       this.showStatus(`✅ 购买了 ${res.name}`, 1000);
       Player.selectTool(`seed-${t.cropId}`);
       this._updateHeldSlot();
     } else {
+      SFX.play('sell-coins');
       this.showStatus(`💰 售出 ${res.name}×${res.count}，+${res.total}`, 1800);
     }
     // 输入栏扣到 0（如作物全部卖光）则清空，需重新拖入

@@ -10,9 +10,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="mobile-web-app-capable" content="yes">
 
-  <title>Terraform · 内测版（1.0 定名「垄上春秋」）</title>
+  <title>Terraform · 内测版</title>
 
-  <link rel="stylesheet" href="css/style.css?v=0.9.0">
+  <link rel="stylesheet" href="css/style.css?v=0.9.7">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
 
@@ -31,7 +31,7 @@
     <div id="title-screen" class="overlay-visible">
 
       <canvas id="title-particles"></canvas>
-      <div id='title-bg' style='background-image:url(圆石背景.png)'></div>
+      <div id='title-bg'></div>
       <div id="btn-credits">鸣谢名单</div>
       <div id="title-content" style="z-index:10">
 
@@ -51,7 +51,7 @@
 
         </div>
 
-        <div id="title-version">0.9.0</div>
+        <div id="title-version">0.9.1</div>
 
       </div>
 
@@ -136,10 +136,8 @@
 
           </select>
 
-          <select id="quest-jump">
-            <option value="">任务…</option>
-            <option value="all">一键全部完成</option>
-          </select>
+          <label class="debug-check" title="打勾一键完成全部任务，取消勾回退到之前进度">一键全部完成<input type="checkbox" id="quest-jump"></label>
+          <label class="debug-check" title="开关背景循环音乐"><input type="checkbox" id="bgm-toggle" checked>背景音</label>
           <button type="button" id="btn-close-settings" class="tool-btn" title="关闭"></button>
           </div>
 
@@ -302,9 +300,10 @@
 
 
 
-  <script src="js/assets.js?v=0.9.0"></script>
+  <script src="js/assets.js?v=0.9.20"></script>
+  <script src="js/sfx.js?v=0.9.22"></script>
 
-  <script src="js/data.js?v=0.9.0"></script>
+  <script src="js/data.js?v=0.9.7"></script>
 
   <script src="js/engine.js?v=0.9.0"></script>
 
@@ -316,9 +315,9 @@
 
   <script src="js/juice.js?v=0.9.0"></script>
 
-  <script src="js/quest.js?v=0.9.0"></script>
+  <script src="js/quest.js?v=0.9.16"></script>
 
-  <script src="js/ui-core.js?v=0.9.0"></script>
+  <script src="js/ui-core.js?v=0.9.4"></script>
 
   <script src="js/ui-farm-view.js?v=0.9.0"></script>
 
@@ -326,7 +325,7 @@
 
   <script src="js/ui-inventory-view.js?v=0.9.0"></script>
 
-  <script src="js/ui-events.js?v=0.9.0"></script>
+  <script src="js/ui-events.js?v=0.9.14"></script>
 
   <script src="js/ui-effects.js?v=0.9.0"></script>
 
@@ -338,13 +337,13 @@
 
   <script src="js/ui-cache.js?v=0.9.0"></script>
 
-  <script src="js/ui-scene.js?v=0.9.0"></script>
+  <script src="js/ui-scene.js?v=0.9.5"></script>
 
   <script src="js/ui-quest.js?v=0.9.0"></script>
 
   <script src="js/inventory.js?v=0.9.0"></script>
 
-  <script src="js/shop.js?v=0.9.0"></script>
+  <script src="js/shop.js?v=0.9.11"></script>
 
   <script src="js/treefarm.js?v=0.9.0"></script>
 
@@ -371,7 +370,7 @@
     </div>
   </div>
 
-  <script src="js/main.js?v=0.9.0"></script>
+  <script src="js/main.js?v=0.9.22"></script>
 
 </body>
 

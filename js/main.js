@@ -146,7 +146,7 @@
     // 商店按钮：开关村民商店；点面板外或点击其他区域亦可关闭
     const btnShop = document.getElementById('btn-shop');
     if (btnShop) btnShop.addEventListener('click', () => {
-      if (UI._shopOpen) UI.closeShop(); else UI.openShop();
+      if (UI._shopOpen) { UI.closeShop(); } else { UI.openShop(); }
     });
 
     // 存档按钮：立即保存（带闪光效果）
@@ -197,7 +197,7 @@
     if (btnSettings && settingsPanel) {
       // 齿轮图标：设置.png 16x16 等比放大到 28x28（tool-icon 规格），相对路径不进 assets.js
       btnSettings.querySelector('.tool-icon').style.cssText =
-        'background:url(设置.png) center/28px 28px no-repeat; width:28px; height:28px; image-rendering:pixelated;';
+        'background:url(' + ASSETS.registry.settings_icon + ') center/28px 28px no-repeat; width:28px; height:28px; image-rendering:pixelated;';
       // 0.8.35：设置面板是 fixed 全屏遮罩（z9990 盖住顶栏齿轮），0.8.31 后只有开、没有收 → 卡死。补三条出口，全部走同一收口函数：
       const _closeSettings = () => { settingsPanel.style.display = 'none'; };
       btnSettings.addEventListener('click', () => {
@@ -206,7 +206,7 @@
       });
       // 出口①：卡片内「关闭」按钮（0.8.31 全屏遮罩后顶栏齿轮被盖住，卡片内必须有可见收口）
       const btnCloseSettings = document.getElementById('btn-close-settings');
-      if (btnCloseSettings) btnCloseSettings.addEventListener('click', _closeSettings);
+      if (btnCloseSettings) btnCloseSettings.addEventListener('click', () => { _closeSettings(); });
       // 出口②：Esc（与 credits Esc 互不冲突——credits 是 z10001 全屏层，settings 是 z9990，同按 Esc 两收不互相影响）
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && settingsPanel.style.display !== 'none') _closeSettings();
@@ -244,17 +244,37 @@
       if (typeof UI !== 'undefined' && UI.showStatus) UI.showStatus('时间：' + names[v], 1000);
     });
     // 任务书入口：底部工具栏紫色书按钮（商店右边），点开/关任务书
-    // 0.8.25 调试·一键完成所有任务：选「一键全部完成」→ Quest.debugCompleteAll() 强制全勾，走同款完成钩子；选完复位占位
+    // 0.9.6 调试·一键完成改方框打勾：打勾=Quest.debugCompleteAll()（自动存快照），取消勾=Quest.debugRestoreQuest() 回退到打勾前进度
     const questJump = document.getElementById('quest-jump');
-    if (questJump) questJump.addEventListener('change', () => {
-      if (questJump.value !== 'all') return;
-      if (typeof Quest !== 'undefined' && Quest.debugCompleteAll) Quest.debugCompleteAll();
-      questJump.value = '';
-      if (typeof UI !== 'undefined' && UI.showStatus) UI.showStatus('已一键完成所有任务', 1200);
-    });
+    if (questJump) {
+      try { questJump.checked = !!localStorage.getItem('stardew_quest_snap'); } catch (e) {}
+      questJump.addEventListener('change', () => {
+      if (typeof Quest === 'undefined') return;
+      if (questJump.checked) {
+        if (Quest.debugCompleteAll) Quest.debugCompleteAll();
+        if (typeof UI !== 'undefined' && UI.showStatus) UI.showStatus('已一键完成所有任务', 1200);
+      } else {
+        const okQ = (Quest.debugRestoreQuest && Quest.debugRestoreQuest());
+        if (typeof UI !== 'undefined' && UI.showStatus) UI.showStatus(okQ ? '已回退到打勾前进度' : '无快照可回退（打勾后刷新过页面或从未一键完成，请重新打勾再取消）', 1200);
+      }
+      });
+    }
+
+    const bgmToggle = document.getElementById('bgm-toggle');
+    if (bgmToggle) {
+      bgmToggle.checked = localStorage.getItem('stardew_bgm') !== 'off';
+      bgmToggle.addEventListener('change', () => {
+        if (typeof SFX === 'undefined') return;
+        if (!bgmToggle.checked) { SFX.setBgmMute(true); }
+        else {
+          SFX.setBgmMute(false);
+          SFX.playBgm(SFX.bgm.scene || 'farm');
+        }
+      });
+    }
 
     const questBtn = document.getElementById('btn-quest');
-    if (questBtn) questBtn.addEventListener('click', () => UI.openQuest());
+    if (questBtn) questBtn.addEventListener('click', () => { UI.openQuest(); });
 
     // 标题界面按钮绑定（「继续游戏」按钮已改为「存档选择下拉 + 进入游戏」）
     var _slotPickMode = 'continue';   // 0.8.27：选档入口区分——'continue'=选择存档读档 / 'new'=单人游戏覆盖开新
@@ -277,7 +297,7 @@
     // 浮层背景用素材库 enchantment 深蓝横幅（base64 运行时才有，跟 ui-quest.js R['enchantment'] 同款手法）。
     // 曾给隐藏 select 装背景，现随 select 隐藏一并撤掉。
     if (selSaveSlot) selSaveSlot.style.backgroundImage = '';
-    // 0.8.27：#save-slot-panel 外框走 css border-image:url(../大框.png)，不再运行时注入 enchantment（避免与大框 fill 打架）
+    // 0.8.27：#save-slot-panel 外框走大框贴图（0.9.7 起运行时注入 ASSETS.registry.big_frame，不再引 css url），不注 enchantment（避免与大框 fill 打架）
     function _openSlotPanel() {
       if (!slotPanel) return;
       slotPanel.style.display = 'block';
@@ -314,7 +334,8 @@
     const creditsOverlay = document.getElementById('credits-overlay');
     const creditsClose = document.getElementById('credits-close');
     const creditsBtn = document.getElementById('btn-credits');
-    if (creditsOverlay) creditsOverlay.style.backgroundImage = 'url(圆石背景.png)';
+    if (creditsOverlay && typeof ASSETS !== 'undefined' && ASSETS.registry.roundstone_bg)
+      creditsOverlay.style.backgroundImage = 'url(' + ASSETS.registry.roundstone_bg + ')';
     if (creditsClose && typeof ASSETS !== 'undefined' && ASSETS.registry['cancel'])
       creditsClose.style.backgroundImage = `url(${ASSETS.registry['cancel']})`;
     const _showCredits = function () { if (creditsOverlay) creditsOverlay.classList.add('show'); };
@@ -324,12 +345,24 @@
     // 面板关闭叉叉：初始化 --cancel-frame CSS 变量（贴 cancel 贴图，JS 喂，同 _ensureFocusFrame 惯例）
     if (typeof ASSETS !== 'undefined' && ASSETS.registry['cancel'])
       document.documentElement.style.setProperty('--cancel-frame', 'url("' + ASSETS.registry['cancel'] + '")');
+    // 0.9.7：运行时不读源码根任何 png，素材只走 ASSETS.registry——标题屏圆石/设置卡片大框/存档面板大框/设置关闭叉 全改运行时注入（desktop 4 张源 png 已内联，css/index 的 6 处 url() 直引全废）
+    if (typeof ASSETS !== 'undefined' && ASSETS.registry) {
+      const R = ASSETS.registry;
+      const _titleBg = document.querySelector('#title-bg');
+      if (_titleBg && R.roundstone_bg) _titleBg.style.backgroundImage = 'url(' + R.roundstone_bg + ')';
+      const _settingsCard = document.querySelector('.settings-card');
+      if (_settingsCard && R.big_frame) _settingsCard.style.backgroundImage = 'url(' + R.big_frame + ')';
+      const _savePanel = document.getElementById('save-slot-panel');
+      if (_savePanel && R.big_frame) _savePanel.style.backgroundImage = 'url(' + R.big_frame + ')';
+      const _btnClose = document.getElementById('btn-close-settings');
+      if (_btnClose && R.cancel) _btnClose.style.background = 'url(' + R.cancel + ') center / 26px 26px no-repeat';
+    }
     const closeInventory = document.getElementById('close-inventory');
     const closeShop = document.getElementById('close-shop');
     const closeQuest = document.getElementById('close-quest');
     if (closeInventory) closeInventory.addEventListener('click', () => UI.closeInventory());
-    if (closeShop) closeShop.addEventListener('click', () => UI.closeShop());
-    if (closeQuest) closeQuest.addEventListener('click', () => UI.closeQuest());
+    if (closeShop) closeShop.addEventListener('click', () => { UI.closeShop(); });
+    if (closeQuest) closeQuest.addEventListener('click', () => { UI.closeQuest(); });
     document.addEventListener('keydown', function (e) {
       if (creditsOverlay && e.key === 'Escape' && creditsOverlay.classList.contains('show')) _hideCredits();
     });
@@ -461,6 +494,7 @@
   // 标题页控制
   // ─────────────────────────────────────────────
   function _showTitle() {
+    if (typeof SFX !== 'undefined' && SFX.stopBgm) SFX.stopBgm();
     var ts = document.getElementById('title-screen');
     if (!ts) return;
     _renderTitleSlots();
@@ -608,6 +642,11 @@
   // 标题隐藏 / 关页提示
   // ─────────────────────────────────────────────
   function _hideTitle(src) {
+    if (typeof SFX !== 'undefined' && SFX.playBgm) {
+      const _armBgm = () => SFX.playBgm(SFX.bgm.scene || 'farm');
+      if (SFX.readyPromise) SFX.readyPromise.then(_armBgm).catch(() => {});
+      else _armBgm();
+    }
     // src：'continue'=继续读档（要提示）/ 'new'=新建（不提示），缺省不提示。
     // 0.6.7：关页存档提示只跟「继续上局」相关；新建=开新档不该弹（提示里的「槽 N」还是上次的，纯噪音）。
     var ts = document.getElementById('title-screen');
@@ -720,7 +759,7 @@
     _setBtnIcon('btn-inv-debug','command_block');
     _setBtnIcon('btn-quest',    'book_purple');
     _setBtnIcon('btn-save',     'chest');
-    _setHudIcon('hud-ico-stamina', 'food_full');
+    _setHudIcon('hud-ico-stamina', 'stamina');
     _setHudIcon('hud-ico-time',    'time');
   }
 
@@ -796,6 +835,7 @@
   function _toggleTreeFarm() {
     if (typeof UI === 'undefined' || !UI.toggleScene) return;
     UI.toggleScene();
+    SFX.play('gate');
   }
 
   /** 把图标换成贴图，同时保留原本在 .tool-icon 内的 .tool-badge（如种子价格标签） */

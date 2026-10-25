@@ -245,6 +245,7 @@ Object.assign(UI, {
 
       this._invalidateCell(row, col);
 
+      SFX.play('watering', 0.45);
       this._spawnBurst(row, col, { colors: ['#6bb6ff', '#9fd4ff', '#bfe8ff'], shape: 'rect', count: 10, speed: 70, gravity: 320, dir: -Math.PI / 2, spread: Math.PI * 1.3 });
 
     });
@@ -285,6 +286,7 @@ Object.assign(UI, {
 
       this._updateHeldSlot();
 
+      SFX.play('bush-rustle', 0.45);
       this._spawnBurst(row, col, { colors: [base, this._shade(base, 30), this._shade(base, -30)], count: 12, speed: 75, gravity: 280 });
 
     });
@@ -320,6 +322,7 @@ Object.assign(UI, {
 
       const { def, extra } = this._cropDefExtra(res);
 
+      SFX.play('harvest-pop', 0.45);
       this._spawnBurst(row, col, { colors: ['#9bd45a', '#c6e87a', '#e8f0a0', (def && def.color) || '#FFD86B'], count: 16, speed: 95, gravity: 260 });
 
       this._shakeIt(2, 220);
@@ -343,6 +346,7 @@ Object.assign(UI, {
     return this._actionEffect(row, col, DATA.TOOL_COST.hoe, (r, c) => Farm.clearGrass(r, c), (res) => {
 
       this._invalidateCell(row, col);
+      SFX.play('bush-rustle', 0.45);
 
       this._spawnBurst(row, col, { colors: ['#7bbf4a', '#9bd45a', '#cfe89a'], count: 10, speed: 60, gravity: 200, dir: -Math.PI / 2, spread: Math.PI * 1.4 });
 
@@ -388,6 +392,7 @@ Object.assign(UI, {
 
       this._invalidateCell(row, col);
 
+      SFX.play('bush-rustle', 0.45);
       this._spawnBurst(row, col, { colors: def.colors, count: 12, speed: 70, gravity: 220, dir: -Math.PI / 2, spread: Math.PI * 1.4 });
 
     });
@@ -416,6 +421,7 @@ Object.assign(UI, {
 
       this._invalidateCell(row, col);
 
+      SFX.play('scythe-swish', 0.45);
       this._spawnBurst(row, col, { colors: ['#8a5a2b', '#a9763c', '#6b4423'], count: 14, speed: 80, gravity: 320 });
 
     });
@@ -435,6 +441,7 @@ Object.assign(UI, {
     return this._actionEffect(row, col, DATA.TOOL_COST.hoe, (r, c) => Farm.toDirt(r, c), (res) => {
 
       this._invalidateCell(row, col);
+      SFX.play('bush-rustle', 0.45);
 
       this._spawnBurst(row, col, { colors: ['#8a5a2b', '#a9763c', '#6b4423'], count: 12, speed: 75, gravity: 300 });
 
@@ -462,6 +469,7 @@ Object.assign(UI, {
 
       this._invalidateCell(row, col);
 
+      SFX.play('axe-chop', 0.45);
       this._spawnBurst(row, col, { colors: ['#6b4a2b', '#8a5a2b', '#3d6b2a', '#5a8a3a'], count: 22, speed: 130, gravity: 340, spread: Math.PI * 2 });
 
       this._shakeIt(4, 300);
@@ -500,6 +508,7 @@ Object.assign(UI, {
 
       this._invalidateCell(row, col);
 
+      SFX.play('bush-rustle', 0.45);
       this._spawnBurst(row, col, { colors: ['#3d6b2a', '#5a8a3a', '#8a5a2b'], count: 10, speed: 55, gravity: 240 });
 
     }, { isOk: (r) => r.ok });
@@ -919,6 +928,7 @@ Object.assign(UI, {
   _tfClearGrassEffect(row, col) {
 
     return this._actionEffect(row, col, DATA.TOOL_COST.hoe, (r, c) => TreeFarm.clearGrass(r, c), () => {
+      SFX.play('bush-rustle', 0.45);
 
       this._invalidateCell(row, col);
 

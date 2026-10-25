@@ -698,15 +698,6 @@ const UI = {
     // 草白描边实时层：画在夜间蒙层之上（见下方 _drawNightOverlay 后的调用），
     // 避免夜晚整幅夜色把白描边压暗、看不出轮廓。
 
-    // 动态层：未浇水作物的呼吸高亮
-    if (this.scene === 'farm') {
-      this._drawWaterOverlay(ctx, cs);
-      this._drawFarmlandOverlay(ctx, cs);
-      this._drawGrownGoldOverlay(ctx, cs);   // 0.8.18：成熟金环呼吸（全幅离屏 + 呼吸 alpha，与耕地绿边同频）
-    }
-
-
-
     // 商店：直接画在画布上，覆盖在农场之上（放大、物品贴图直接合成进 GUI）
 
     if (this._shopOpen) {
@@ -792,6 +783,13 @@ const UI = {
     // 草白描边实时层：整片合并外轮廓（无相邻双白线交叉），alpha 随鼠标到最近草质心距离 10%→100% 渐变（草身不变）。
     // 画在夜间蒙层之上：黑夜时白描边不再被夜色压暗，轮廓清晰（用户反馈「夜晚太暗」）。
     this._drawGrassOutline(ctx);
+    // 成熟金环呼吸：与草白描边同待遇画在夜蒙层之上——黑夜时金光不被深蓝夜色压暗（dream 2026-10-19 报「金环图层不在黑布上面」；静态死静金环仍在缓存层当最低亮度底，不随本行挪动）。
+    if (this.scene === 'farm') this._drawGrownGoldOverlay(ctx, cs);
+    // 未浇水呼吸高亮 + 耕地绿边：与草白描边/成熟金环同待遇画在夜蒙层之上——黑夜不被深蓝夜色压暗（dream 2026-10-19 点名；原与金环同在 farm 块先于夜蒙层绘制，故被蓝布盖住）。
+    if (this.scene === 'farm') {
+      this._drawWaterOverlay(ctx, cs);
+      this._drawFarmlandOverlay(ctx, cs);
+    }
 
     // DOM 导航按钮位置/贴图/锁定态刷新：覆盖 resize/Quest完成等一切状态变化的兜底路径
 

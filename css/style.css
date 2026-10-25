@@ -64,7 +64,7 @@ body {
 .hud-item { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
 .hud-label { color: var(--text-dim); font-size: 13px; font-family: 'Silkscreen', sans-serif; }
 .hud-label img {
-  width: 18px; height: 18px;
+  width: 28px; height: 28px;
   image-rendering: pixelated;
   image-rendering: -moz-crisp-edges;
   vertical-align: middle;
@@ -292,7 +292,6 @@ body {
   position: relative;   /* 0.8.36：右上角关闭叉定位锚 */
   box-sizing: border-box;
   background-color: #6b4a2a;
-  background-image: url(../大框.png);
   background-size: 100% 100%;
   background-repeat: no-repeat;
   image-rendering: pixelated;
@@ -326,6 +325,23 @@ body {
   width: 140px;          /* 0.8.33：调试下拉贴内容定宽（原 width:100% 撑满卡片≈300px，几个字也拉成一条） */
   align-self: center;    /* 卡片内居中竖排，不再顶满整宽 */
 }
+
+/* 0.9.6：设置卡片「一键全部完成」勾选行——与 5 下拉/调试开关同几何（140px 居中），
+   避开大框.png 左右花草边饰（原通标签通栅拉伸、原生方框正压边饰，dream 报「和背景重叠」）；
+   方框放在文字后（dream 令「方框加在后面」），flex 居中排。 */
+#settings-panel .debug-check {
+  align-self: center;
+  width: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #fff;
+  text-shadow: 1px 1px 0 rgba(0,0,0,.6);
+  font-family: 'Silkscreen', sans-serif;
+  cursor: pointer;
+}
 /* 0.8.36：设置卡片右上角关闭叉（Cancel.png=MC 取消图标，红色方底黑叉，1024×1024 透明底；
    取代 0.8.35 卡片底部「关闭」文字行。id 规则压过 .settings-card .tool-btn 的拉伸/半透明底，绝对定位脱离 flex 流。 */
 #btn-close-settings {
@@ -338,7 +354,6 @@ body {
   min-width: 0;
   border: none;
   border-radius: 0;
-  background: url(../Cancel.png) center / 26px 26px no-repeat;
   image-rendering: pixelated;
   opacity: .95;
 }
@@ -1296,7 +1311,6 @@ body {
   position: absolute; top: 100%; left: 0; width: 100%; height: 280px; z-index: 11;
   display: flex; flex-direction: column; justify-content: center; gap: 8px;
   background-color: #6b4a2a;
-  background-image: url(../大框.png);   /* 0.8.27fix5: 整张方框等比放大铺满（方形面板 280x280，四角花草不重复不变形） */
   background-size: 100% 100%;
   background-repeat: no-repeat;
   image-rendering: pixelated;

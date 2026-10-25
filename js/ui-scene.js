@@ -211,7 +211,7 @@ const _sceneMethods = {
 
     ctx.globalAlpha = 0.75 + 0.25 * pulse;
 
-    const drawn = ASSETS.draw(ctx, key, ix, iy, iw, iw);
+    const drawn = ASSETS.draw(ctx, key, ix, iy, iw, iw, true);
 
     if (!drawn) {
 

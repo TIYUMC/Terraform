@@ -110,12 +110,34 @@ const Quest = {
   /** 0.8.25 调试用：一键强制完成全部任务节点（含 manual/submit 型，正常玩法绝不走此路径）。
    *  仅调试下拉触发；把每个节点 done[id]=true 后走 _evaluate changed 同款钩子刷任务书 + 商店门控。 */
   debugCompleteAll() {
+    // 0.9.6：执行前快照当前完成态，取消勾时 debugRestoreQuest 靠它回退
+    if (typeof Player !== 'undefined' && Player.questsDone) {
+      this._debugSnapshot = JSON.parse(JSON.stringify(Player.questsDone));
+      try { localStorage.setItem('stardew_quest_snap', JSON.stringify(Player.questsDone)); } catch (e) {}
+    } else {
+      this._debugSnapshot = null;
+      try { localStorage.removeItem('stardew_quest_snap'); } catch (e) {}
+    }
     const quests = (typeof DATA !== 'undefined' && DATA.QUESTS) || [];
     const done = this._done();
     for (const x of quests) { done[x.id] = true; }
     if (typeof Player !== 'undefined') Player.questsDone = done;
     if (typeof globalThis.UI !== 'undefined' && globalThis.UI._questOpen && globalThis.UI._renderQuest) globalThis.UI._renderQuest();
     if (typeof globalThis.UI !== 'undefined' && globalThis.UI._refreshShopLock) globalThis.UI._refreshShopLock();
+  },
+
+  /** 0.9.6：取消勾时回退到 debugCompleteAll 之前的完成进度。无快照（还没一键完成过）则早退，无副作用。 */
+  debugRestoreQuest() {
+    let snap = null;
+    try { snap = localStorage.getItem('stardew_quest_snap'); } catch (e) {}
+    if (!snap) { this._debugSnapshot = null; return false; }
+    const prev = JSON.parse(snap);
+    if (typeof Player !== 'undefined') Player.questsDone = prev;
+    this._debugSnapshot = prev;
+    try { localStorage.removeItem('stardew_quest_snap'); } catch (e) {}
+    if (typeof globalThis.UI !== 'undefined' && globalThis.UI._questOpen && globalThis.UI._renderQuest) globalThis.UI._renderQuest();
+    if (typeof globalThis.UI !== 'undefined' && globalThis.UI._refreshShopLock) globalThis.UI._refreshShopLock();
+    return true;
   },
 
   /** 达成提示 */

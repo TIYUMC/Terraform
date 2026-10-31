@@ -342,6 +342,21 @@ body {
   font-family: 'Silkscreen', sans-serif;
   cursor: pointer;
 }
+/* 0.10.2：设置面板「正在播放的 BGM 曲名」——次级灰、不抢戏、与勾选同列 */
+#settings-panel .debug-bgm-name {
+  align-self: center;
+  width: 140px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: #b3b3b3;
+  font-family: 'Silkscreen', sans-serif;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 1px 1px 0 rgba(0,0,0,.5);
+  pointer-events: none;
+}
 /* 0.8.36：设置卡片右上角关闭叉（Cancel.png=MC 取消图标，红色方底黑叉，1024×1024 透明底；
    取代 0.8.35 卡片底部「关闭」文字行。id 规则压过 .settings-card .tool-btn 的拉伸/半透明底，绝对定位脱离 flex 流。 */
 #btn-close-settings {

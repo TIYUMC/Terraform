@@ -9,7 +9,7 @@ const SFX = {
   ctx: null,
   buffers: {},
   bgmBufs: {},
-  bgm: { scene: null, src: null, gain: null, muted: false },
+  bgm: { scene: null, src: null, gain: null, muted: false, keys: null, dead: false, gen: 0 },
   muted: false,
   _active: 0,
   _ac() {
@@ -82,8 +82,41 @@ const SFX = {
     this.bgm.src = s; this.bgm.gain = g; this.bgm.scene = key;
     s.start();
   },
+  playBgmRandom(keys) {
+    if (this.bgm.muted || this.bgm.src) return;
+    const valid = (Array.isArray(keys) ? keys : []).filter(k => this.bgmBufs[k]);
+    if (!valid.length) return;
+    const c = this._ac();
+    const myGen = ++this.bgm.gen; this.bgm.dead = false; this.bgm.keys = valid;
+    const pick = () => valid[Math.floor(Math.random() * valid.length)];
+    const self = this;
+    const startNext = (key, fade) => {
+      if (self.bgm.dead || myGen !== self.bgm.gen) return;
+      const buf = self.bgmBufs[key];
+      const s = c.createBufferSource(); s.buffer = buf; s.loop = false;
+      const g = c.createGain();
+      const now = c.currentTime;
+      const tail = 0.1;  // 尾 100ms 淡出
+      g.gain.setValueAtTime(0, now);
+      g.gain.linearRampToValueAtTime(0.35, now + fade);
+      g.gain.setValueAtTime(0.35, now + buf.duration - tail);
+      g.gain.linearRampToValueAtTime(0, now + buf.duration);
+      s.onended = () => {
+        if (self.bgm.dead || myGen !== self.bgm.gen) return;
+        let next = pick();
+        while (next === self.bgm.scene && valid.length > 1) next = pick();  // 防连续同曲
+        self.bgm.scene = next;
+        startNext(next, 0.25);  // 250ms 淡入接下一首
+      };
+      s.connect(g); g.connect(c.destination);
+      self.bgm.src = s; self.bgm.gain = g; self.bgm.scene = key;
+      s.start();
+    };
+    startNext(pick(), 0.25);  // 随机起点，250ms 淡入
+  },
   stopBgm(fadeMs = 800) {
     if (!this.bgm.src) return;
+    this.bgm.dead = true; this.bgm.keys = null; this.bgm.gen++;  // 断链 + 作废一切在途/孤儿链令牌
     const c = this._ac();
     this.bgm.gain.gain.setValueAtTime(this.bgm.gain.gain.value, c.currentTime);
     this.bgm.gain.gain.setTargetAtTime(0, c.currentTime, (fadeMs||800)/3000);

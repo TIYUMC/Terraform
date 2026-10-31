@@ -192,6 +192,24 @@
     });
     // 调试：改天气下拉（晴 / 雨 / 大风，冬季雨显示为雪）。占位项「天气…」无效值忽略；同状态不重置倒计时。
     // 0.8.29：设置面板 toggle——点「设置」齿轮按钮显/隐 #settings-panel（大框.png 背景，收拢调试下拉）
+    // 0.10.2：设置面板实时显示正在播放的 BGM 曲名（轮询 SFX.bgm.scene，0 改动音频层）
+    var _bgmNameTimer = null;
+    function _refreshBgmName() {
+      var el = document.getElementById('bgm-name');
+      if (!el || typeof SFX === 'undefined') return;
+      if (SFX.bgm.muted) { el.textContent = '背景音：已关闭'; return; }
+      if (!SFX.bgm.src)  { el.textContent = '背景音：未播放'; return; }
+      var nm = (BGM_NAMES && BGM_NAMES[SFX.bgm.scene]) || SFX.bgm.scene || '未知曲目';
+      el.textContent = '现在播放：' + nm;
+    }
+    function _startBgmNamePoll() {
+      _refreshBgmName();
+      if (_bgmNameTimer) return;
+      _bgmNameTimer = setInterval(_refreshBgmName, 1500);
+    }
+    function _stopBgmNamePoll() {
+      if (_bgmNameTimer) { clearInterval(_bgmNameTimer); _bgmNameTimer = null; }
+    }
     const btnSettings = document.getElementById('btn-settings');
     const settingsPanel = document.getElementById('settings-panel');
     if (btnSettings && settingsPanel) {
@@ -199,9 +217,9 @@
       btnSettings.querySelector('.tool-icon').style.cssText =
         'background:url(' + ASSETS.registry.settings_icon + ') center/28px 28px no-repeat; width:28px; height:28px; image-rendering:pixelated;';
       // 0.8.35：设置面板是 fixed 全屏遮罩（z9990 盖住顶栏齿轮），0.8.31 后只有开、没有收 → 卡死。补三条出口，全部走同一收口函数：
-      const _closeSettings = () => { settingsPanel.style.display = 'none'; };
+      const _closeSettings = () => { _stopBgmNamePoll(); settingsPanel.style.display = 'none'; };
       btnSettings.addEventListener('click', () => {
-        if (settingsPanel.style.display === 'none') settingsPanel.style.display = 'flex';   // 开
+        if (settingsPanel.style.display === 'none') { settingsPanel.style.display = 'flex'; _startBgmNamePoll(); }   // 开
         else _closeSettings();                                                            // 齿轮被遮罩盖住时点不到，toggle 分支保留防呆
       });
       // 出口①：卡片内「关闭」按钮（0.8.31 全屏遮罩后顶栏齿轮被盖住，卡片内必须有可见收口）
@@ -268,7 +286,8 @@
         if (!bgmToggle.checked) { SFX.setBgmMute(true); }
         else {
           SFX.setBgmMute(false);
-          SFX.playBgm(SFX.bgm.scene || 'farm');
+          if (SFX.playBgmRandom && BGM_KEYS.length) SFX.playBgmRandom(BGM_KEYS);
+          else SFX.playBgm(SFX.bgm.scene || 'farm');
         }
       });
     }
@@ -590,6 +609,15 @@
 
   var _titleTransitionOut = null;
   var _closeNotice = null;   // 0.6.2：上次关页存档结果标记（init 读即清、_hideTitle 提示）；必须 IIFE 顶层，init 内声明则 _hideTitle 读不到
+  var BGM_KEYS = ['indigo_01', 'indigo_04', 'indigo_06', 'fm_1', 'fm_2', 'fm_4'];  // 0.10.1 BGM 随机池（farm 不进池，留 fallback 兜底）
+  // 0.10.2：BGM 曲名映射（indigo 用 OGA Purrple Cat tracklist 实名；fm_1~4 为 freesafemusic Freedom Motif 占位，待 dream 补实名）
+  var BGM_NAMES = {
+    farm: 'Farm Theme',
+    indigo_01: 'Indigo Dreams',
+    indigo_04: 'Saturday Morning',
+    indigo_06: 'Opening the Window',
+    fm_1: 'Lo-fi 1', fm_2: 'Lo-fi 2', fm_4: 'Lo-fi 4'
+  };
 
   // 0.6.5：全局自定义 confirm 弹窗（微信/移动内嵌浏览器屏蔽原生 confirm，全走自绘 DOM；#confirm-overlay+#confirm-card 静态在 index.html，贴图只贴居中卡片）。
   // _confirmBusy 防重入（弹窗显示期间再次调用直接忽略）；overlay 不存在时兜底直接执行 onYes（不阻断流程）。
@@ -643,7 +671,7 @@
   // ─────────────────────────────────────────────
   function _hideTitle(src) {
     if (typeof SFX !== 'undefined' && SFX.playBgm) {
-      const _armBgm = () => SFX.playBgm(SFX.bgm.scene || 'farm');
+      const _armBgm = () => { if (SFX.playBgmRandom && BGM_KEYS.length) SFX.playBgmRandom(BGM_KEYS); else SFX.playBgm(SFX.bgm.scene || 'farm'); };
       if (SFX.readyPromise) SFX.readyPromise.then(_armBgm).catch(() => {});
       else _armBgm();
     }
